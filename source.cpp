@@ -312,27 +312,27 @@ void ladeBestenliste() {
 		bestenlisteneintraege[0].name[1] = '-';
 		bestenlisteneintraege[0].name[2] = '-';
 		bestenlisteneintraege[0].name[3] = NULL;
-		bestenlisteneintraege[0].punkte = 30000;
+		bestenlisteneintraege[0].punkte = 25000;
 		bestenlisteneintraege[1].name[0] = '-';
 		bestenlisteneintraege[1].name[1] = '-';
 		bestenlisteneintraege[1].name[2] = '-';
 		bestenlisteneintraege[1].name[3] = NULL;
-		bestenlisteneintraege[1].punkte = 29000;
+		bestenlisteneintraege[1].punkte = 20000;
 		bestenlisteneintraege[2].name[0] = '-';
 		bestenlisteneintraege[2].name[1] = '-';
 		bestenlisteneintraege[2].name[2] = '-';
 		bestenlisteneintraege[2].name[3] = NULL;
-		bestenlisteneintraege[2].punkte = 28000;
+		bestenlisteneintraege[2].punkte = 15000;
 		bestenlisteneintraege[3].name[0] = '-';
 		bestenlisteneintraege[3].name[1] = '-';
 		bestenlisteneintraege[3].name[2] = '-';
 		bestenlisteneintraege[3].name[3] = NULL;
-		bestenlisteneintraege[3].punkte = 27000;
+		bestenlisteneintraege[3].punkte = 10000;
 		bestenlisteneintraege[4].name[0] = '-';
 		bestenlisteneintraege[4].name[1] = '-';
 		bestenlisteneintraege[4].name[2] = '-';
 		bestenlisteneintraege[4].name[3] = NULL;
-		bestenlisteneintraege[4].punkte = 26000;
+		bestenlisteneintraege[4].punkte = 5000;
 	}
 	if (stream) {
 		fclose(stream);
