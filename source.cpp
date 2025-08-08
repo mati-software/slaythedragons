@@ -461,6 +461,7 @@ int main(int argc, char* args[])
 
 		//main loop, aka game loop
 		while (!quit) {
+			Uint32 time1 = SDL_GetTicks();
 			switch (state) {
 			case STATE_HAUPTMENUE:
 				loopContent_hauptmenue();
@@ -504,6 +505,11 @@ int main(int argc, char* args[])
 			case STATE_UEBERGANG_GAME_HAUPTMENUE:
 				loopContent_uebergangGameHauptmenue();
 				break;
+			}
+			Uint32 time2 = SDL_GetTicks();
+			Uint32 deltaTime = time2 - time1;
+			if (deltaTime < 33) {
+				SDL_Delay(33 - deltaTime);
 			}
 		}
 	}
@@ -1899,7 +1905,7 @@ void loopContent_uebergangHauptmenueGame() {
 	maleMenueHintergrund(menueHintergrundOffsetY);
 
 	//FIXME durch den neuen status und die damit neue status-starttime wird die animation abgebrochen
-	//TODO mach einfach die timestamps für die hauptmenue-animationen absolut, also auf gematime basierend statt auf deltatime (deltatime macht nur sinn bei uebergang-scrolls und bei pausierbarem gameplay)
+	//TODO mach einfach die timestamps fï¿½r die hauptmenue-animationen absolut, also auf gematime basierend statt auf deltatime (deltatime macht nur sinn bei uebergang-scrolls und bei pausierbarem gameplay)
 	malePyrat(menueHintergrundOffsetY);
 
 	game_maleHud(0, menueHintergrundOffsetY - 680 - 582);
