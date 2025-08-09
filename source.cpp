@@ -136,8 +136,7 @@ void toggleFullscreen();
 void initGamepads();
 void saveUserdata();
 void playSound(Mix_Chunk* const sound);
-SDL_Texture* ladeBilddateiAlsTexture(const char* str1);
-void ladeBilddateiAlsTextureArray(SDL_Texture** const datensenke, const char* const bildpfad, const int anzahlEinzelbilder);
+SDL_Surface* loadImageAsSurface(const char* str1);
 
 void signBestenlisteneintrag(const Uint32 punkte, const char* const name, char* const signatur);
 
@@ -148,33 +147,34 @@ void calculateAndSetNextSprechenStarttime();
 
 
 SDL_Window* window = NULL;
-SDL_Renderer* renderer = NULL;
-SDL_Texture* windowTexture = NULL;
+SDL_Surface* windowSurface = NULL;
 
 //Pictures
-SDL_Texture* resource_texture_game_drache[112];
-SDL_Texture* resource_texture_game_dracheExplode[15];
-SDL_Texture* resource_texture_hauptmenue_hintergrund = NULL;
-SDL_Texture* resource_texture_hauptmenue_texte = NULL;
-SDL_Texture* resource_texture_options_hintergrund = NULL;
-SDL_Texture* resource_texture_options_texte = NULL;
-SDL_Texture* resource_texture_game_fadenkreuze = NULL;
-SDL_Texture* resource_texture_game_hieb = NULL;
-SDL_Texture* resource_texture_game_gameover = NULL;
-SDL_Texture* resource_texture_game_bonustabelle = NULL;
-SDL_Texture* resource_texture_hud = NULL;
-SDL_Texture* resource_texture_bestenlisteBuchstaben = NULL;
-SDL_Texture* resource_texture_alphabet = NULL;
-SDL_Texture* resource_texture_tastaturersatz = NULL;
-SDL_Texture* resource_texture_grosseBestenlisteUeberschrift = NULL;
-SDL_Texture* resource_texture_fahne = NULL;
-SDL_Texture* resource_texture_quit = NULL;
-SDL_Texture* resource_texture_pyratKopf = NULL;
-SDL_Texture* resource_texture_pyratTexte = NULL;
-SDL_Texture* resource_texture_sprechblase = NULL;
-SDL_Texture* resource_texture_pyratArm[30];
-SDL_Texture* resource_texture_pyratAuge = NULL;
-SDL_Texture* resource_texture_fehlermeldungNoGamepad = NULL;
+SDL_Surface* resource_surface_game_drache = NULL;
+SDL_Surface* resource_surface_game_dracheGespiegelt = NULL;
+SDL_Surface* resource_surface_game_dracheExplode = NULL;
+SDL_Surface* resource_surface_game_dracheExplodeGespiegelt = NULL;
+SDL_Surface* resource_surface_hauptmenue_hintergrund = NULL;
+SDL_Surface* resource_surface_hauptmenue_texte = NULL;
+SDL_Surface* resource_surface_options_hintergrund = NULL;
+SDL_Surface* resource_surface_options_texte = NULL;
+SDL_Surface* resource_surface_game_fadenkreuze = NULL;
+SDL_Surface* resource_surface_game_hieb = NULL;
+SDL_Surface* resource_surface_game_gameover = NULL;
+SDL_Surface* resource_surface_game_bonustabelle = NULL;
+SDL_Surface* resource_surface_hud = NULL;
+SDL_Surface* resource_surface_bestenlisteBuchstaben = NULL;
+SDL_Surface* resource_surface_alphabet = NULL;
+SDL_Surface* resource_surface_tastaturersatz = NULL;
+SDL_Surface* resource_surface_grosseBestenlisteUeberschrift = NULL;
+SDL_Surface* resource_surface_fahne = NULL;
+SDL_Surface* resource_surface_quit = NULL;
+SDL_Surface* resource_surface_pyratKopf = NULL;
+SDL_Surface* resource_surface_pyratTexte = NULL;
+SDL_Surface* resource_surface_sprechblase = NULL;
+SDL_Surface* resource_surface_pyratArm = NULL;
+SDL_Surface* resource_surface_pyratAuge = NULL;
+SDL_Surface* resource_surface_fehlermeldungNoGamepad = NULL;
 
 //Music
 Mix_Music *resource_music_hauptmenue = NULL;
@@ -282,6 +282,71 @@ int namenseingabe_bestenlisteIndex;
 
 
 
+SDL_Surface *flipSurface(SDL_Surface *surface) {
+	SDL_Surface *flippedSurface = NULL;
+	flippedSurface = SDL_CreateRGBSurface(SDL_SWSURFACE, surface->w, surface->h, surface->format->BitsPerPixel, surface->format->Rmask, surface->format->Gmask, surface->format->Bmask, 0);
+	if (SDL_MUSTLOCK(surface)) {
+		SDL_LockSurface(surface);
+	}
+	Uint32 *srcPixels = (Uint32 *)surface->pixels;
+	Uint32 *destPixels = (Uint32 *)flippedSurface->pixels;
+	for (int y = 0; y < surface->h; y++) {
+		for (int x = 0; x < surface->w; x++) {
+			int srcI = y * surface->w + x;
+			int destI = y * surface->w + surface->w - 1 - x;
+			destPixels[destI] = srcPixels[srcI];
+		}
+	}
+	if (SDL_MUSTLOCK(surface)) {
+		SDL_UnlockSurface(surface);
+	}
+	SDL_SetColorKey(flippedSurface, SDL_TRUE, SDL_MapRGB(flippedSurface->format, 0xFF, 0x00, 0xFF));
+	SDL_SetSurfaceRLE(flippedSurface, 1);
+	return flippedSurface;
+}
+
+/**
+ * Trotz gegenteiliger Behauptung kommt SDL_BlitSurface nicht immer mit negativem x und y beim destRect klar.
+ * Manchmal aendert SDL einfach den Wert auf 0, zerschiesst also das Rect und gibt das Bild falsch aus.
+ * Daher niemals die kaputte Funktion SDL_Rect nutzen, nur die selbstgeschriebene!
+ */
+void blitSurface(SDL_Surface *srcSurface, SDL_Rect *srcRect, SDL_Surface *destSurface, SDL_Rect *destRect) {
+	if (destRect == NULL || srcRect == NULL) {
+		//aktuell gab es bei solchen Faellen noch keine Probleme, daher erstmal keine Arbeit mit machen
+		SDL_BlitSurface(srcSurface, srcRect, destSurface, destRect);
+		return;
+	}
+
+	if (destRect->x >= destSurface->w || destRect->y >= destSurface->h) {
+		return;
+	}
+	int destX2 = destRect->x + destRect->w;
+	int destY2 = destRect->y + destRect->h;
+	if (destX2 <= 0 || destY2 <= 0) {
+		return;
+	}
+
+	int srcX2 = srcRect->x + srcRect->w;
+	int srcY2 = srcRect->y + srcRect->h;
+
+	SDL_Rect srcRectNeu = *srcRect;
+	SDL_Rect destRectNeu = *destRect;
+	if (destRectNeu.x < 0) {
+		srcRectNeu.x -= destRectNeu.x;
+		srcRectNeu.w = srcX2 - srcRectNeu.x;
+		destRectNeu.x = 0;
+		destRectNeu.w = destX2 - destRectNeu.x;
+	}
+	if (destRectNeu.y < 0) {
+		srcRectNeu.y -= destRectNeu.y;
+		srcRectNeu.h = srcY2 - srcRectNeu.y;
+		destRectNeu.y = 0;
+		destRectNeu.h = destY2 - destRectNeu.y;
+	}
+	//man koennte noch breite und hoehe beschneiden, falls destSurface zu klein ist; aktuell gab es damit aber noch keine Probleme, daher erst mal so belassen
+	SDL_BlitSurface(srcSurface, &srcRectNeu, destSurface, &destRectNeu);
+}
+
 void ladeBestenliste() {
 	FILE *stream = oeffneDatei("userdata/ranking.dat", "rb");
 	bool fehlerfreiGeladen = false;
@@ -312,27 +377,27 @@ void ladeBestenliste() {
 		bestenlisteneintraege[0].name[1] = '-';
 		bestenlisteneintraege[0].name[2] = '-';
 		bestenlisteneintraege[0].name[3] = NULL;
-		bestenlisteneintraege[0].punkte = 25000;
+		bestenlisteneintraege[0].punkte = 30000;
 		bestenlisteneintraege[1].name[0] = '-';
 		bestenlisteneintraege[1].name[1] = '-';
 		bestenlisteneintraege[1].name[2] = '-';
 		bestenlisteneintraege[1].name[3] = NULL;
-		bestenlisteneintraege[1].punkte = 20000;
+		bestenlisteneintraege[1].punkte = 29000;
 		bestenlisteneintraege[2].name[0] = '-';
 		bestenlisteneintraege[2].name[1] = '-';
 		bestenlisteneintraege[2].name[2] = '-';
 		bestenlisteneintraege[2].name[3] = NULL;
-		bestenlisteneintraege[2].punkte = 15000;
+		bestenlisteneintraege[2].punkte = 28000;
 		bestenlisteneintraege[3].name[0] = '-';
 		bestenlisteneintraege[3].name[1] = '-';
 		bestenlisteneintraege[3].name[2] = '-';
 		bestenlisteneintraege[3].name[3] = NULL;
-		bestenlisteneintraege[3].punkte = 10000;
+		bestenlisteneintraege[3].punkte = 27000;
 		bestenlisteneintraege[4].name[0] = '-';
 		bestenlisteneintraege[4].name[1] = '-';
 		bestenlisteneintraege[4].name[2] = '-';
 		bestenlisteneintraege[4].name[3] = NULL;
-		bestenlisteneintraege[4].punkte = 5000;
+		bestenlisteneintraege[4].punkte = 26000;
 	}
 	if (stream) {
 		fclose(stream);
@@ -368,12 +433,14 @@ int main(int argc, char* args[])
 	int imgFlags = IMG_INIT_PNG;
 	if (!(IMG_Init(imgFlags) & imgFlags)) {
 		printf("%s\n", IMG_GetError());
+		return -1;
 	}
 
 	//mit Chunk-Size von aktuell 2048 Bytes ggf. rumspielen
 	if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048) < 0)
 	{
 		printf("SDL_mixer could not initialize! SDL_mixer Error: %s\n", Mix_GetError());
+		return -1;
 	}
 
 	initGamepads();
@@ -384,44 +451,41 @@ int main(int argc, char* args[])
 
 	//Create window
 	window = SDL_CreateWindow("Slay The Dragons", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, vollbildEingeschaltet ? SDL_WINDOW_FULLSCREEN : 0);
-
 	if (window == NULL) {
 		printf("%s", SDL_GetError());
 	}
 	else
 	{
-		renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
-		
 		SDL_ShowCursor(SDL_DISABLE);
+		windowSurface = SDL_GetWindowSurface(window);
+		SDL_FillRect(windowSurface, NULL, SDL_MapRGB(windowSurface->format, 0x00, 0xFF, 0xFF));
 
 
-
-		//TODO loeschen? SDL_FillRect(windowSurface, NULL, SDL_MapRGB(windowSurface->format, 0x00, 0xFF, 0xFF));
-
-
-		ladeBilddateiAlsTextureArray(resource_texture_game_drache, "bilder/drache.png", 112);
-		ladeBilddateiAlsTextureArray(resource_texture_game_dracheExplode, "bilder/drache-explode.png", 15);
-		ladeBilddateiAlsTextureArray(resource_texture_pyratArm, "bilder/pyrat-arm.png", 30);
-		resource_texture_hauptmenue_hintergrund = ladeBilddateiAlsTexture("bilder/menu.png");
-		resource_texture_hauptmenue_texte = ladeBilddateiAlsTexture("bilder/menu-items.png");
-		resource_texture_options_hintergrund = ladeBilddateiAlsTexture("bilder/options.png");
-		resource_texture_options_texte = ladeBilddateiAlsTexture("bilder/options-items.png");
-		resource_texture_game_fadenkreuze = ladeBilddateiAlsTexture("bilder/fadenkreuze.png");
-		resource_texture_game_hieb = ladeBilddateiAlsTexture("bilder/hieb.png");
-		resource_texture_game_gameover = ladeBilddateiAlsTexture("bilder/gameover.png");
-		resource_texture_game_bonustabelle = ladeBilddateiAlsTexture("bilder/bonustabelle.png");
-		resource_texture_hud = ladeBilddateiAlsTexture("bilder/hud.png");
-		resource_texture_bestenlisteBuchstaben = ladeBilddateiAlsTexture("bilder/bestenliste-buchstaben.png");
-		resource_texture_alphabet = ladeBilddateiAlsTexture("bilder/alphabet.png");
-		resource_texture_tastaturersatz = ladeBilddateiAlsTexture("bilder/tastaturersatz.png");
-		resource_texture_grosseBestenlisteUeberschrift = ladeBilddateiAlsTexture("bilder/bestenliste-ueberschrift.png");
-		resource_texture_fahne = ladeBilddateiAlsTexture("bilder/fahne.png");
-		resource_texture_quit = ladeBilddateiAlsTexture("bilder/quit.png");
-		resource_texture_pyratKopf = ladeBilddateiAlsTexture("bilder/pyrat-kopf.png");
-		resource_texture_pyratTexte = ladeBilddateiAlsTexture("bilder/pyrat-texte.png");
-		resource_texture_sprechblase = ladeBilddateiAlsTexture("bilder/sprechblase.png");
-		resource_texture_pyratAuge = ladeBilddateiAlsTexture("bilder/auge.png");
-		resource_texture_fehlermeldungNoGamepad = ladeBilddateiAlsTexture("bilder/fehlermeldung-no_gamepad.png");
+		resource_surface_game_drache = loadImageAsSurface("bilder/drache.png");
+		resource_surface_game_dracheGespiegelt = flipSurface(resource_surface_game_drache);
+		resource_surface_game_dracheExplode = loadImageAsSurface("bilder/drache-explode.png");
+		resource_surface_game_dracheExplodeGespiegelt = flipSurface(resource_surface_game_dracheExplode);
+		resource_surface_hauptmenue_hintergrund = loadImageAsSurface("bilder/menu.png");
+		resource_surface_hauptmenue_texte = loadImageAsSurface("bilder/menu-items.png");
+		resource_surface_options_hintergrund = loadImageAsSurface("bilder/options.png");
+		resource_surface_options_texte = loadImageAsSurface("bilder/options-items.png");
+		resource_surface_game_fadenkreuze = loadImageAsSurface("bilder/fadenkreuze.png");
+		resource_surface_game_hieb = loadImageAsSurface("bilder/hieb.png");
+		resource_surface_game_gameover = loadImageAsSurface("bilder/gameover.png");
+		resource_surface_game_bonustabelle = loadImageAsSurface("bilder/bonustabelle.png");
+		resource_surface_hud = loadImageAsSurface("bilder/hud.png");
+		resource_surface_bestenlisteBuchstaben = loadImageAsSurface("bilder/bestenliste-buchstaben.png");
+		resource_surface_alphabet = loadImageAsSurface("bilder/alphabet.png");
+		resource_surface_tastaturersatz = loadImageAsSurface("bilder/tastaturersatz.png");
+		resource_surface_grosseBestenlisteUeberschrift = loadImageAsSurface("bilder/bestenliste-ueberschrift.png");
+		resource_surface_fahne = loadImageAsSurface("bilder/fahne.png");
+		resource_surface_quit = loadImageAsSurface("bilder/quit.png");
+		resource_surface_pyratKopf = loadImageAsSurface("bilder/pyrat-kopf.png");
+		resource_surface_pyratTexte = loadImageAsSurface("bilder/pyrat-texte.png");
+		resource_surface_sprechblase = loadImageAsSurface("bilder/sprechblase.png");
+		resource_surface_pyratArm = loadImageAsSurface("bilder/pyrat-arm.png");
+		resource_surface_pyratAuge = loadImageAsSurface("bilder/auge.png");
+		resource_surface_fehlermeldungNoGamepad = loadImageAsSurface("bilder/fehlermeldung-no_gamepad.png");
 
 		resource_music_hauptmenue = Mix_LoadMUS("musik/slaythedragons-theme.ogg");
 		resource_music_game = Mix_LoadMUS("musik/Swirl-kurz.ogg");
@@ -441,9 +505,8 @@ int main(int argc, char* args[])
 		ladeBestenliste();
 
 
-		SDL_Surface* surfaceDrache = IMG_Load("bilder/drache.png");
-		SDL_LockSurface(surfaceDrache);
-		Uint32 *pixels = (Uint32 *)surfaceDrache->pixels;
+		SDL_LockSurface(resource_surface_game_drache);
+		Uint32 *pixels = (Uint32 *)resource_surface_game_drache->pixels;
 		int pixelsIndex = 0;
 		for (int frame = 0; frame < DRACHESPRITE_NUMBER_FRAMES; frame++) {
 			for (int y = 0; y < DRACHESPRITE_HEIGHT; y++) {
@@ -453,7 +516,7 @@ int main(int argc, char* args[])
 				}
 			}
 		}
-		SDL_FreeSurface(surfaceDrache);
+		SDL_UnlockSurface(resource_surface_game_drache);
 
 
 
@@ -461,7 +524,6 @@ int main(int argc, char* args[])
 
 		//main loop, aka game loop
 		while (!quit) {
-			Uint32 time1 = SDL_GetTicks();
 			switch (state) {
 			case STATE_HAUPTMENUE:
 				loopContent_hauptmenue();
@@ -506,44 +568,35 @@ int main(int argc, char* args[])
 				loopContent_uebergangGameHauptmenue();
 				break;
 			}
-			Uint32 time2 = SDL_GetTicks();
-			Uint32 deltaTime = time2 - time1;
-			if (deltaTime < 33) {
-				SDL_Delay(33 - deltaTime);
-			}
 		}
 	}
 
 	//Deallocate Resoucen
-	for (int i = 0; i < 112; i++) {
-		SDL_DestroyTexture(resource_texture_game_drache[i]);
-	}
-	for (int i = 0; i < 15; i++) {
-		SDL_DestroyTexture(resource_texture_game_dracheExplode[i]);
-	}
-	for (int i = 0; i < 30; i++) {
-		SDL_DestroyTexture(resource_texture_pyratArm[i]);
-	}
-	SDL_DestroyTexture(resource_texture_hauptmenue_hintergrund);
-	SDL_DestroyTexture(resource_texture_hauptmenue_texte);
-	SDL_DestroyTexture(resource_texture_options_hintergrund);
-	SDL_DestroyTexture(resource_texture_options_texte);
-	SDL_DestroyTexture(resource_texture_game_fadenkreuze);
-	SDL_DestroyTexture(resource_texture_game_hieb);
-	SDL_DestroyTexture(resource_texture_game_gameover);
-	SDL_DestroyTexture(resource_texture_game_bonustabelle);
-	SDL_DestroyTexture(resource_texture_hud);
-	SDL_DestroyTexture(resource_texture_bestenlisteBuchstaben);
-	SDL_DestroyTexture(resource_texture_alphabet);
-	SDL_DestroyTexture(resource_texture_tastaturersatz);
-	SDL_DestroyTexture(resource_texture_grosseBestenlisteUeberschrift);
-	SDL_DestroyTexture(resource_texture_fahne);
-	SDL_DestroyTexture(resource_texture_quit);
-	SDL_DestroyTexture(resource_texture_pyratKopf);
-	SDL_DestroyTexture(resource_texture_pyratTexte);
-	SDL_DestroyTexture(resource_texture_sprechblase);
-	SDL_DestroyTexture(resource_texture_pyratAuge);
-	SDL_DestroyTexture(resource_texture_fehlermeldungNoGamepad);
+	SDL_FreeSurface(resource_surface_game_drache);
+	SDL_FreeSurface(resource_surface_game_dracheGespiegelt);
+	SDL_FreeSurface(resource_surface_game_dracheExplode);
+	SDL_FreeSurface(resource_surface_game_dracheExplodeGespiegelt);
+	SDL_FreeSurface(resource_surface_hauptmenue_hintergrund);
+	SDL_FreeSurface(resource_surface_hauptmenue_texte);
+	SDL_FreeSurface(resource_surface_options_hintergrund);
+	SDL_FreeSurface(resource_surface_options_texte);
+	SDL_FreeSurface(resource_surface_game_fadenkreuze);
+	SDL_FreeSurface(resource_surface_game_hieb);
+	SDL_FreeSurface(resource_surface_game_gameover);
+	SDL_FreeSurface(resource_surface_game_bonustabelle);
+	SDL_FreeSurface(resource_surface_hud);
+	SDL_FreeSurface(resource_surface_bestenlisteBuchstaben);
+	SDL_FreeSurface(resource_surface_alphabet);
+	SDL_FreeSurface(resource_surface_tastaturersatz);
+	SDL_FreeSurface(resource_surface_grosseBestenlisteUeberschrift);
+	SDL_FreeSurface(resource_surface_fahne);
+	SDL_FreeSurface(resource_surface_quit);
+	SDL_FreeSurface(resource_surface_pyratKopf);
+	SDL_FreeSurface(resource_surface_pyratTexte);
+	SDL_FreeSurface(resource_surface_sprechblase);
+	SDL_FreeSurface(resource_surface_pyratArm);
+	SDL_FreeSurface(resource_surface_pyratAuge);
+	SDL_FreeSurface(resource_surface_fehlermeldungNoGamepad);
 
 	Mix_FreeMusic(resource_music_hauptmenue);
 	Mix_FreeMusic(resource_music_game);
@@ -653,7 +706,12 @@ void handleGlobalEvents(const SDL_Event* const e) {
 void toggleFullscreen()
 {
 	vollbildEingeschaltet = (SDL_GetWindowFlags(window) & SDL_WINDOW_FULLSCREEN) ? false : true;
-	SDL_SetWindowFullscreen(window, vollbildEingeschaltet ? SDL_WINDOW_FULLSCREEN : 0);
+	//SDL_SetWindowFullscreen baut nur scheisse, daher neues Fenster
+	windowSurface = NULL;
+	SDL_DestroyWindow(window);
+	window = NULL;
+	window = SDL_CreateWindow("Slay The Dragons", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, vollbildEingeschaltet ? SDL_WINDOW_FULLSCREEN : 0);
+	windowSurface = SDL_GetWindowSurface(window);
 }
 
 void updateAnalogstickDigitaleYPositionen() {
@@ -937,8 +995,7 @@ void loopContent_hauptmenue() {
 		menuDestRect.y = 508;
 		break;
 	}
-	
-	SDL_RenderCopy(renderer, resource_texture_hauptmenue_texte, &menuSrcRect, &menuDestRect);
+	blitSurface(resource_surface_hauptmenue_texte, &menuSrcRect, windowSurface, &menuDestRect);
 
 	malePyrat(0);
 
@@ -948,10 +1005,10 @@ void loopContent_hauptmenue() {
 		destRect.y = 660;
 		destRect.w = 275;
 		destRect.h = 40;
-		SDL_RenderCopy(renderer, resource_texture_fehlermeldungNoGamepad, NULL,&destRect);
+		SDL_BlitSurface(resource_surface_fehlermeldungNoGamepad, NULL, windowSurface, &destRect);
 	}
 
-	SDL_RenderPresent(renderer);
+	SDL_UpdateWindowSurface(window);
 
 }
 
@@ -970,7 +1027,7 @@ void malePyrat(const Sint16 offsetY) {
 			blaseDestRect.y = 249 + offsetY;
 			blaseDestRect.w = 346;
 			blaseDestRect.h = 228;
-			SDL_RenderCopy(renderer, resource_texture_sprechblase, NULL, &blaseDestRect);
+			SDL_BlitSurface(resource_surface_sprechblase, NULL, windowSurface, &blaseDestRect);
 
 			//Text malen
 			SDL_Rect textSrcRect;
@@ -983,7 +1040,7 @@ void malePyrat(const Sint16 offsetY) {
 			textDestRect.y = 269 + offsetY;
 			textDestRect.w = 307;
 			textDestRect.h = 103;
-			SDL_RenderCopy(renderer, resource_texture_pyratTexte, &textSrcRect, &textDestRect);
+			SDL_BlitSurface(resource_surface_pyratTexte, &textSrcRect, windowSurface, &textDestRect);
 
 			//Mundebewegungen
 			int srcRectIndex = -1;
@@ -1052,7 +1109,7 @@ void malePyrat(const Sint16 offsetY) {
 				destRect.y = 378 + offsetY;
 				destRect.w = 125;
 				destRect.h = 152;
-				SDL_RenderCopy(renderer, resource_texture_pyratKopf, &srcRect, &destRect);
+				SDL_BlitSurface(resource_surface_pyratKopf, &srcRect, windowSurface, &destRect);
 			}
 		}
 	}
@@ -1074,12 +1131,17 @@ void malePyrat(const Sint16 offsetY) {
 	if (pyrat_armanimation_globalStarttime > 0 && pyrat_armanimation_globalStarttime <= currentTime) {
 		int armFrameIndex = (currentTime - pyrat_armanimation_globalStarttime) / 33;
 		if (armFrameIndex < 60) {
+			SDL_Rect srcRect;
+			srcRect.x = 160 * (armFrameIndex < 30 ? armFrameIndex : 59 - armFrameIndex);
+			srcRect.y = 0;
+			srcRect.w = 160;
+			srcRect.h = 240;
 			SDL_Rect destRect;
 			destRect.x = 998;
 			destRect.y = 349 + offsetY;
 			destRect.w = 160;
 			destRect.h = 240;
-			SDL_RenderCopy(renderer, resource_texture_pyratArm[armFrameIndex < 30 ? armFrameIndex : 59 - armFrameIndex], NULL, &destRect);
+			SDL_BlitSurface(resource_surface_pyratArm, &srcRect, windowSurface, &destRect);
 		}
 	}
 
@@ -1096,7 +1158,7 @@ void malePyrat(const Sint16 offsetY) {
 		destRect.y = 450 + offsetY + augeOffsetY;
 		destRect.w = 21;
 		destRect.h = 11;
-		SDL_RenderCopy(renderer, resource_texture_pyratAuge, &srcRect, &destRect);
+		SDL_BlitSurface(resource_surface_pyratAuge, &srcRect, windowSurface, &destRect);
 	}
 }
 
@@ -1154,7 +1216,7 @@ void schreibeTextInBestenliste(const char* text, const Sint16 left, const Sint16
 			destRect.x = left + deltaX;
 			destRect.y = top + deltaY + offsetY;
 
-			SDL_RenderCopy(renderer, resource_texture_bestenlisteBuchstaben, &srcRect, &destRect);
+			blitSurface(resource_surface_bestenlisteBuchstaben, &srcRect, windowSurface, &destRect);
 
 		}
 
@@ -1248,34 +1310,19 @@ void schreibeZahlInBestenliste(const Uint32 zahl, const Sint16 left, const Sint1
 		zifferDestRect.x = left + deltaX;
 		zifferDestRect.y = top + deltaY + offsetY;
 
-		SDL_RenderCopy(renderer, resource_texture_bestenlisteBuchstaben, &zifferSrcRect, &zifferDestRect);
+		blitSurface(resource_surface_bestenlisteBuchstaben, &zifferSrcRect, windowSurface, &zifferDestRect);
 		zuVerarbeitendeRestzahl = zuVerarbeitendeRestzahl / 10;
 	}
 }
 
 void maleMenueHintergrund(const Sint16 offsetY)
 {
-	if (offsetY <= 582) {
-		SDL_Rect backgroundRect;
-		backgroundRect.x = 0;
-		backgroundRect.y = 582 - offsetY;
-		backgroundRect.w = 1280;
-		backgroundRect.h = 720;
-		SDL_RenderCopy(renderer, resource_texture_hauptmenue_hintergrund, &backgroundRect, NULL);
-	}
-	else {
-		SDL_Rect srcRect;
-		srcRect.x = 0;
-		srcRect.y = 0;
-		srcRect.w = 1280;
-		srcRect.h = 720 + 582 - offsetY;
-		SDL_Rect destRect;
-		destRect.x = 0;
-		destRect.y = offsetY - 582;
-		destRect.w = 1280;
-		destRect.h = srcRect.h;
-		SDL_RenderCopy(renderer, resource_texture_hauptmenue_hintergrund, &srcRect, &destRect);
-	}
+	SDL_Rect backgroundRect;
+	backgroundRect.x = 0;
+	backgroundRect.y = 582 - offsetY;
+	backgroundRect.w = 1280;
+	backgroundRect.h = 720;
+	SDL_BlitSurface(resource_surface_hauptmenue_hintergrund, &backgroundRect, windowSurface, NULL);
 
 	if (offsetY > 0) {
 		int frameIndex = (SDL_GetTicks() / 33) % 60;
@@ -1289,7 +1336,7 @@ void maleMenueHintergrund(const Sint16 offsetY)
 		fahneDestRect.y = 319 - 582 + offsetY;
 		fahneDestRect.w = 121;
 		fahneDestRect.h = 62;
-		SDL_RenderCopy(renderer, resource_texture_fahne, &fahneSrcRect, &fahneDestRect);
+		blitSurface(resource_surface_fahne, &fahneSrcRect, windowSurface, &fahneDestRect);
 	}
 
 	schreibeBestenliste(offsetY);
@@ -1369,7 +1416,7 @@ void drawLine(Sint16 x1, Sint16 y1, Sint16 x2, Sint16 y2) {
 		while (yLauf < maxY - (6 + 15) / 2) {
 			destRect.x = (yLauf - y1) * (x2 - x1) / (y2 - y1) + x1 - 2;
 			destRect.y = yLauf - 2;
-			SDL_RenderCopy(renderer, resource_texture_game_fadenkreuze, &srcRect, &destRect);
+			blitSurface(resource_surface_game_fadenkreuze, &srcRect, windowSurface, &destRect);
 			yLauf += 8;
 		}
 	}
@@ -1380,7 +1427,7 @@ void drawLine(Sint16 x1, Sint16 y1, Sint16 x2, Sint16 y2) {
 		while (xLauf < maxX - (6 + 15) / 2) {
 			destRect.y = (xLauf - x1) * (y2 - y1) / (x2 - x1) + y1 - 2;
 			destRect.x = xLauf - 2;
-			SDL_RenderCopy(renderer, resource_texture_game_fadenkreuze, &srcRect, &destRect);
+			blitSurface(resource_surface_game_fadenkreuze, &srcRect, windowSurface, &destRect);
 			xLauf += 8;
 		}
 	}
@@ -1564,8 +1611,7 @@ void loopContent_game() {
 
 
 	//Clear screen
-	SDL_SetRenderDrawColor(renderer, 0x74, 0xA8, 0xFC, 255);
-	SDL_RenderClear(renderer);
+	SDL_FillRect(windowSurface, NULL, SDL_MapRGB(windowSurface->format, 0x74, 0xA8, 0xFC));
 
 	game_maleMastkorb();
 
@@ -1616,7 +1662,7 @@ void loopContent_game() {
 		hiebDestRest.y = game_hieb_posY - game_hieb_radius;
 		hiebDestRest.w = game_hieb_radius * 2 + 1;
 		hiebDestRest.h = game_hieb_radius * 2 + 1;
-		SDL_RenderCopy(renderer, resource_texture_game_hieb, &hiebSrcRect, &hiebDestRest);
+		SDL_BlitScaled(resource_surface_game_hieb, &hiebSrcRect, windowSurface, &hiebDestRest);
 	}
 
 	game_maleHud(deltaTime, 0);
@@ -1632,7 +1678,7 @@ void loopContent_game() {
 	fadenkreuzLeftSrcRect.y = 15;
 	fadenkreuzLeftSrcRect.w = 15;
 	fadenkreuzLeftSrcRect.h = 15;
-	SDL_RenderCopy(renderer, resource_texture_game_fadenkreuze, &fadenkreuzLeftSrcRect, &fadenkreuzLeftRect);
+	blitSurface(resource_surface_game_fadenkreuze, &fadenkreuzLeftSrcRect, windowSurface, &fadenkreuzLeftRect);
 	SDL_Rect fadenkreuzRightRect;
 	fadenkreuzRightRect.x = rightX - 7;
 	fadenkreuzRightRect.y = rightY - 7;
@@ -1643,9 +1689,9 @@ void loopContent_game() {
 	fadenkreuzRightSrcRect.y = 0;
 	fadenkreuzRightSrcRect.w = 15;
 	fadenkreuzRightSrcRect.h = 15;
-	SDL_RenderCopy(renderer, resource_texture_game_fadenkreuze, &fadenkreuzRightSrcRect, &fadenkreuzRightRect);
+	blitSurface(resource_surface_game_fadenkreuze, &fadenkreuzRightSrcRect, windowSurface, &fadenkreuzRightRect);
 
-	SDL_RenderPresent(renderer);
+	SDL_UpdateWindowSurface(window);
 
 	if (anzahlErzeugterDrachenInDenLetztenZweiSekunden < 2) {
 		//versuchen drache zu erzeugen, bei kollision oder fehlendem freien slot einfach nix machen (wird dann beim naechsten frame noch mal probiert)
@@ -1745,14 +1791,27 @@ void game_maleDrachen(const Uint32 deltaTime)
 		if (game_drachen[i].lebend) {
 			if (game_drachen[i].localStartzeitpunkt <= deltaTime && game_drachen[i].localEndzeitpunkt >= deltaTime) {
 				game_drachen[i].frameNr = ((deltaTime / 33 + game_drachen[i].animationStartFrame) % 112);
-				SDL_RenderCopyEx(renderer, resource_texture_game_drache[game_drachen[i].frameNr], NULL, &game_drachen[i].rect, 0, NULL, game_drachen[i].vonRechtsNachLinks ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE);
+				//Cutout rect
+				SDL_Rect dracheSrcRect;
+				dracheSrcRect.x = 0;
+				dracheSrcRect.y = 94 * game_drachen[i].frameNr;
+				dracheSrcRect.w = 236;
+				dracheSrcRect.h = 94;
+				blitSurface(game_drachen[i].vonRechtsNachLinks ? resource_surface_game_dracheGespiegelt : resource_surface_game_drache, &dracheSrcRect, windowSurface, &game_drachen[i].rect);
 			}
 		}
 		else {
 			if (game_drachen[i].localSlaytime < game_drachen[i].localEndzeitpunkt && game_drachen[i].localEndzeitpunkt >= deltaTime) {
 				int sterbeFrameNr = (deltaTime - game_drachen[i].localSlaytime) / 33;
 				if (sterbeFrameNr < 15) {
-					SDL_RenderCopyEx(renderer, resource_texture_game_dracheExplode[sterbeFrameNr], NULL, &game_drachen[i].slayRect, 0, NULL, game_drachen[i].vonRechtsNachLinks ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE);
+					//Cutout rect
+					SDL_Rect dracheSrcRect;
+					dracheSrcRect.x = 0;
+					dracheSrcRect.y = 194 * sterbeFrameNr;
+					dracheSrcRect.w = 336;
+					dracheSrcRect.h = 194;
+					SDL_Rect destRect = game_drachen[i].slayRect;
+					blitSurface(game_drachen[i].vonRechtsNachLinks ? resource_surface_game_dracheExplodeGespiegelt : resource_surface_game_dracheExplode, &dracheSrcRect, windowSurface, &destRect);
 				}
 			}
 		}
@@ -1772,7 +1831,7 @@ void game_maleHud(const Uint32 deltaTime, const Sint16 offsetY)
 	zeit_umrandung_destRect.y = 2 + offsetY;
 	zeit_umrandung_destRect.w = 48;
 	zeit_umrandung_destRect.h = 43;
-	SDL_RenderCopy(renderer, resource_texture_hud, &zeit_umrandung_srcRect, &zeit_umrandung_destRect);
+	blitSurface(resource_surface_hud, &zeit_umrandung_srcRect, windowSurface, &zeit_umrandung_destRect);
 
 	//Zeit malen
 	bool rot = false;
@@ -1807,8 +1866,8 @@ void game_maleHud(const Uint32 deltaTime, const Sint16 offsetY)
 	zeit_ziffer2_destRect.y = 12 + offsetY;
 	zeit_ziffer2_destRect.w = 14;
 	zeit_ziffer2_destRect.h = 25;
-	SDL_RenderCopy(renderer, resource_texture_hud, &zeit_ziffer1_srcRect, &zeit_ziffer1_destRect);
-	SDL_RenderCopy(renderer, resource_texture_hud, &zeit_ziffer2_srcRect, &zeit_ziffer2_destRect);
+	blitSurface(resource_surface_hud, &zeit_ziffer1_srcRect, windowSurface, &zeit_ziffer1_destRect);
+	blitSurface(resource_surface_hud, &zeit_ziffer2_srcRect, windowSurface, &zeit_ziffer2_destRect);
 
 	//Points-Label malen
 	SDL_Rect points_label_srcRect;
@@ -1821,7 +1880,7 @@ void game_maleHud(const Uint32 deltaTime, const Sint16 offsetY)
 	points_label_destRect.y = 4 + offsetY;
 	points_label_destRect.w = 59;
 	points_label_destRect.h = 15;
-	SDL_RenderCopy(renderer, resource_texture_hud, &points_label_srcRect, &points_label_destRect);
+	blitSurface(resource_surface_hud, &points_label_srcRect, windowSurface, &points_label_destRect);
 
 	//Points malen
 	Uint32 zuVerarbeitendeRestzahl = game_points;
@@ -1837,7 +1896,7 @@ void game_maleHud(const Uint32 deltaTime, const Sint16 offsetY)
 		points_srcRect.x = 60 + (zuVerarbeitendeRestzahl % 10) * 11;
 		points_destRect.x = 126 - pointsZifferIndex * 11;
 		zuVerarbeitendeRestzahl = zuVerarbeitendeRestzahl / 10;
-		SDL_RenderCopy(renderer, resource_texture_hud, &points_srcRect, &points_destRect);
+		blitSurface(resource_surface_hud, &points_srcRect, windowSurface, &points_destRect);
 	}
 }
 
@@ -1889,8 +1948,8 @@ void loopContent_uebergangHauptmenueGame() {
 	Uint32 deltaTime = currentTime - aktuellerStatus_globalStarttime;
 
 	//Clear screen
-	SDL_SetRenderDrawColor(renderer, 0x74, 0xA8, 0xFC, 255);
-	SDL_RenderClear(renderer);
+	SDL_FillRect(windowSurface, NULL, SDL_MapRGB(windowSurface->format, 0x74, 0xA8, 0xFC));
+
 
 	Sint16 menueHintergrundOffsetY;
 	if (deltaTime <= DAUER_WAIT_BEFORE_SCROLL) {
@@ -1905,12 +1964,12 @@ void loopContent_uebergangHauptmenueGame() {
 	maleMenueHintergrund(menueHintergrundOffsetY);
 
 	//FIXME durch den neuen status und die damit neue status-starttime wird die animation abgebrochen
-	//TODO mach einfach die timestamps fï¿½r die hauptmenue-animationen absolut, also auf gematime basierend statt auf deltatime (deltatime macht nur sinn bei uebergang-scrolls und bei pausierbarem gameplay)
+	//TODO mach einfach die timestamps für die hauptmenue-animationen absolut, also auf gematime basierend statt auf deltatime (deltatime macht nur sinn bei uebergang-scrolls und bei pausierbarem gameplay)
 	malePyrat(menueHintergrundOffsetY);
 
 	game_maleHud(0, menueHintergrundOffsetY - 680 - 582);
 
-	SDL_RenderPresent(renderer);
+	SDL_UpdateWindowSurface(window);
 
 	if (deltaTime >= DAUER_WAIT_BEFORE_SCROLL + DAUER_SCROLL_UP) {
 		state = STATE_GAME;
@@ -1923,48 +1982,16 @@ void loopContent_uebergangHauptmenueGame() {
 	}
 }
 
-SDL_Texture* ladeBilddateiAlsTexture(const char* str1) {
-	SDL_Surface* surface = IMG_Load(str1);
-	SDL_SetColorKey(surface, SDL_TRUE, SDL_MapRGB(surface->format, 0xFF, 0x00, 0xFF));
-	SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
-	SDL_FreeSurface(surface);
+SDL_Surface* loadImageAsSurface(const char* str1) {
+	SDL_Surface* loadedSurface = IMG_Load(str1);
+	SDL_Surface* optimizedSurface = SDL_ConvertSurface(loadedSurface, windowSurface->format, 0);
+	SDL_FreeSurface(loadedSurface);
+	loadedSurface = NULL;
+	SDL_SetColorKey(optimizedSurface, SDL_TRUE, SDL_MapRGB(optimizedSurface->format, 0xFF, 0x00, 0xFF));
+	//Beschleunigt Surfaces mit Transparenz, kommt aber auf das Bild an
+	SDL_SetSurfaceRLE(optimizedSurface, 1);
 
-	return texture;
-}
-
-void ladeBilddateiAlsTextureArray(SDL_Texture** const datensenke, const char* const bildpfad, const int anzahlEinzelbilder) {
-	SDL_Surface* surface = IMG_Load(bildpfad);
-	if (surface->w > surface->h) {
-		Sint16 breiteProBild = surface->w / anzahlEinzelbilder;
-		SDL_Rect srcRect;
-		srcRect.y = 0;
-		srcRect.w = breiteProBild;
-		srcRect.h = surface->h;
-		for (int i = 0; i < anzahlEinzelbilder; i++) {
-			SDL_Surface* einzelbildSurface = SDL_CreateRGBSurface(SDL_SWSURFACE, breiteProBild, surface->h, surface->format->BitsPerPixel, surface->format->Rmask, surface->format->Gmask, surface->format->Bmask, 0);
-			srcRect.x = breiteProBild * i;
-			SDL_BlitSurface(surface, &srcRect, einzelbildSurface, NULL);
-			SDL_SetColorKey(einzelbildSurface, SDL_TRUE, SDL_MapRGB(einzelbildSurface->format, 0xFF, 0x00, 0xFF));
-			datensenke[i] = SDL_CreateTextureFromSurface(renderer, einzelbildSurface);
-			SDL_FreeSurface(einzelbildSurface);
-		}
-	}
-	else {
-		Sint16 hoeheProBild = surface->h / anzahlEinzelbilder;
-		SDL_Rect srcRect;
-		srcRect.x = 0;
-		srcRect.w = surface->w;
-		srcRect.h = hoeheProBild;
-		for (int i = 0; i < anzahlEinzelbilder; i++) {
-			SDL_Surface* einzelbildSurface = SDL_CreateRGBSurface(SDL_SWSURFACE, surface->w, hoeheProBild, surface->format->BitsPerPixel, surface->format->Rmask, surface->format->Gmask, surface->format->Bmask, 0);
-			srcRect.y = hoeheProBild * i;
-			SDL_BlitSurface(surface, &srcRect, einzelbildSurface, NULL);
-			SDL_SetColorKey(einzelbildSurface, SDL_TRUE, SDL_MapRGB(einzelbildSurface->format, 0xFF, 0x00, 0xFF));
-			datensenke[i] = SDL_CreateTextureFromSurface(renderer, einzelbildSurface);
-			SDL_FreeSurface(einzelbildSurface);
-		}
-	}
-	SDL_FreeSurface(surface);
+	return optimizedSurface;
 }
 
 void loopContent_gameover() {
@@ -2008,8 +2035,7 @@ void loopContent_gameover() {
 	}
 
 	//Clear screen
-	SDL_SetRenderDrawColor(renderer, 0x74, 0xA8, 0xFC, 255);
-	SDL_RenderClear(renderer);
+	SDL_FillRect(windowSurface, NULL, SDL_MapRGB(windowSurface->format, 0x74, 0xA8, 0xFC));
 
 	game_maleMastkorb();
 	game_maleDrachen(deltaTime + GAME_LENGTH);
@@ -2017,7 +2043,7 @@ void loopContent_gameover() {
 
 	game_maleGameOver(0);
 
-	SDL_RenderPresent(renderer);
+	SDL_UpdateWindowSurface(window);
 }
 
 void game_maleGameOver(Sint16 offsetX)
@@ -2027,7 +2053,7 @@ void game_maleGameOver(Sint16 offsetX)
 	gameoverDestRect.y = 85;
 	gameoverDestRect.w = 1178;
 	gameoverDestRect.h = 550;
-	SDL_RenderCopy(renderer, resource_texture_game_gameover, NULL, &gameoverDestRect);
+	SDL_BlitSurface(resource_surface_game_gameover, NULL, windowSurface, &gameoverDestRect);
 }
 
 void game_maleMastkorb()
@@ -2042,7 +2068,7 @@ void game_maleMastkorb()
 	backgroundDestRect.y = 680;
 	backgroundDestRect.w = 1280;
 	backgroundDestRect.h = 40;
-	SDL_RenderCopy(renderer, resource_texture_hauptmenue_hintergrund, &backgroundSrcRect, &backgroundDestRect);
+	SDL_BlitSurface(resource_surface_hauptmenue_hintergrund, &backgroundSrcRect, windowSurface, &backgroundDestRect);
 }
 
 bool inBestenlisteEintragen() {
@@ -2095,8 +2121,7 @@ void loopContent_bonustabelle() {
 	}
 
 	//Clear screen
-	SDL_SetRenderDrawColor(renderer, 0x74, 0xA8, 0xFC, 255);
-	SDL_RenderClear(renderer);
+	SDL_FillRect(windowSurface, NULL, SDL_MapRGB(windowSurface->format, 0x74, 0xA8, 0xFC));
 
 
 	game_maleMastkorb();
@@ -2164,7 +2189,7 @@ void loopContent_bonustabelle() {
 
 	game_maleHud(GAME_LENGTH, 0);
 
-	SDL_RenderPresent(renderer);
+	SDL_UpdateWindowSurface(window);
 
 	if (weiterGedrueckt && deltaTime > 1000 + game_bonuspunkte) {
 		aktuellerStatus_globalStarttime = currentTime;
@@ -2190,7 +2215,7 @@ void game_maleBonustabelle(const Sint16 offsetX, const Sint16 offsetY)
 	bonustabelleDestRect.y = (SCREEN_HEIGHT - 474) / 2 + offsetY;
 	bonustabelleDestRect.w = 886;
 	bonustabelleDestRect.h = 474;
-	SDL_RenderCopy(renderer, resource_texture_game_bonustabelle, &bonustabelleSrcRect, &bonustabelleDestRect);
+	SDL_BlitSurface(resource_surface_game_bonustabelle, &bonustabelleSrcRect, windowSurface, &bonustabelleDestRect);
 
 	schreibeBonustabelleZahl(BONUSPUNKTE_DOUBLE, 1000 + offsetX, 190 + 55 * 0 + offsetY, false);
 	schreibeBonustabelleZahl(BONUSPUNKTE_TRIPLE, 1000 + offsetX, 190 + 55 * 1 + offsetY, false);
@@ -2235,7 +2260,7 @@ void schreibeBonustabelleZahl(const Uint32 zahl, const Sint16 right, const Sint1
 		}
 		zifferDestRect.x = right - zifferIndex * 24;
 
-		SDL_RenderCopy(renderer, resource_texture_game_bonustabelle, &zifferSrcRect, &zifferDestRect);
+		blitSurface(resource_surface_game_bonustabelle, &zifferSrcRect, windowSurface, &zifferDestRect);
 		zuVerarbeitendeRestzahl = zuVerarbeitendeRestzahl / 10;
 	}
 }
@@ -2270,8 +2295,7 @@ void loopContent_uebergangBonustabelleHauptmenue() {
 	}
 
 	//Clear screen
-	SDL_SetRenderDrawColor(renderer, 0x74, 0xA8, 0xFC, 255);
-	SDL_RenderClear(renderer);
+	SDL_FillRect(windowSurface, NULL, SDL_MapRGB(windowSurface->format, 0x74, 0xA8, 0xFC));
 
 	Sint16 zurueckgelegterWeg = (582 + 720 - 40) * deltaTime / 1000;
 
@@ -2281,7 +2305,7 @@ void loopContent_uebergangBonustabelleHauptmenue() {
 
 	game_maleHud(GAME_LENGTH, -zurueckgelegterWeg);
 
-	SDL_RenderPresent(renderer);
+	SDL_UpdateWindowSurface(window);
 
 }
 
@@ -2408,14 +2432,14 @@ void loopContent_options() {
 	backgroundRect.y = 582;
 	backgroundRect.w = 1280;
 	backgroundRect.h = 720;
-	SDL_RenderCopy(renderer, resource_texture_hauptmenue_hintergrund, &backgroundRect, NULL);
+	SDL_BlitSurface(resource_surface_hauptmenue_hintergrund, &backgroundRect, windowSurface, NULL);
 
 	SDL_Rect optionsBackgroundDestRect;
 	optionsBackgroundDestRect.x = 400;
 	optionsBackgroundDestRect.y = 238;
 	optionsBackgroundDestRect.w = 480;
 	optionsBackgroundDestRect.h = 420;
-	SDL_RenderCopy(renderer, resource_texture_options_hintergrund, NULL, &optionsBackgroundDestRect);
+	SDL_BlitSurface(resource_surface_options_hintergrund, NULL, windowSurface, &optionsBackgroundDestRect);
 
 	schreibeBestenliste(0);
 
@@ -2445,7 +2469,7 @@ void loopContent_options() {
 		menuDestRect.y = 558;
 		break;
 	}
-	SDL_RenderCopy(renderer, resource_texture_options_texte, &menuSrcRect, &menuDestRect);
+	blitSurface(resource_surface_options_texte, &menuSrcRect, windowSurface, &menuDestRect);
 
 	if (!soundEingeschaltet) {
 		SDL_Rect checkboxSrcRect;
@@ -2458,7 +2482,7 @@ void loopContent_options() {
 		checkboxDestRect.y = 297;
 		checkboxDestRect.w = 33;
 		checkboxDestRect.h = 33;
-		SDL_RenderCopy(renderer, resource_texture_options_texte, &checkboxSrcRect, &checkboxDestRect);
+		SDL_BlitSurface(resource_surface_options_texte, &checkboxSrcRect, windowSurface, &checkboxDestRect);
 	}
 
 	if (!musikEingeschaltet) {
@@ -2472,7 +2496,7 @@ void loopContent_options() {
 		checkboxDestRect.y = 387;
 		checkboxDestRect.w = 33;
 		checkboxDestRect.h = 33;
-		SDL_RenderCopy(renderer, resource_texture_options_texte, &checkboxSrcRect, &checkboxDestRect);
+		SDL_BlitSurface(resource_surface_options_texte, &checkboxSrcRect, windowSurface, &checkboxDestRect);
 	}
 
 	if ((SDL_GetWindowFlags(window) & SDL_WINDOW_FULLSCREEN) == 0) {
@@ -2486,12 +2510,12 @@ void loopContent_options() {
 		checkboxDestRect.y = 477;
 		checkboxDestRect.w = 33;
 		checkboxDestRect.h = 33;
-		SDL_RenderCopy(renderer, resource_texture_options_texte, &checkboxSrcRect, &checkboxDestRect);
+		SDL_BlitSurface(resource_surface_options_texte, &checkboxSrcRect, windowSurface, &checkboxDestRect);
 	}
 
 	malePyrat(0);
 
-	SDL_RenderPresent(renderer);
+	SDL_UpdateWindowSurface(window);
 
 }
 
@@ -2550,7 +2574,7 @@ void schreibeTextInGrosseBestenliste(const char* text, const Sint16 left, const 
 		if (charIndex >= 0) {
 			srcRect.x = 1 + charIndex * 41;
 			destRect.x = left + deltaX;
-			SDL_RenderCopy(renderer, resource_texture_alphabet, &srcRect, &destRect);
+			blitSurface(resource_surface_alphabet, &srcRect, windowSurface, &destRect);
 		}
 
 		lastChar = text[i];
@@ -2563,7 +2587,7 @@ void schreibeTextInGrosseBestenliste(const char* text, const Sint16 left, const 
 		srcRect.x = 331;
 		srcRect.y = hervorgehoben ? 103 + 52 : 52;
 		destRect.x = left + deltaX;
-		SDL_RenderCopy(renderer, resource_texture_alphabet, &srcRect, &destRect);
+		blitSurface(resource_surface_alphabet, &srcRect, windowSurface, &destRect);
 	}
 }
 
@@ -2585,7 +2609,7 @@ void schreibeZahlInGrosseBestenliste(const Uint32 zahl, const Sint16 right, cons
 		zifferSrcRect.x = 1 + (zuVerarbeitendeRestzahl % 10) * 33;
 		zifferDestRect.x = right - zifferIndex * 33;
 
-		SDL_RenderCopy(renderer, resource_texture_alphabet, &zifferSrcRect, &zifferDestRect);
+		blitSurface(resource_surface_alphabet, &zifferSrcRect, windowSurface, &zifferDestRect);
 		zuVerarbeitendeRestzahl = zuVerarbeitendeRestzahl / 10;
 	}
 }
@@ -2620,8 +2644,7 @@ void loopContent_bestenliste() {
 	}
 
 	//Clear screen
-	SDL_SetRenderDrawColor(renderer, 0x74, 0xA8, 0xFC, 255);
-	SDL_RenderClear(renderer);
+	SDL_FillRect(windowSurface, NULL, SDL_MapRGB(windowSurface->format, 0x74, 0xA8, 0xFC));
 
 	game_maleMastkorb();
 
@@ -2629,7 +2652,7 @@ void loopContent_bestenliste() {
 
 	game_maleHud(GAME_LENGTH, 0);
 
-	SDL_RenderPresent(renderer);
+	SDL_UpdateWindowSurface(window);
 
 	if (weiterGedrueckt) {
 		state = STATE_UEBERGANG_BESTENLISTE_HAUPTMENUE;
@@ -2645,7 +2668,7 @@ void maleGrosseBestenliste(const Sint16 offsetX, const Sint16 offsetY, const boo
 	destRect.w = 1054;
 	destRect.h = 184;
 
-	SDL_RenderCopy(renderer, resource_texture_grosseBestenlisteUeberschrift, NULL, &destRect);
+	blitSurface(resource_surface_grosseBestenlisteUeberschrift, NULL, windowSurface, &destRect);
 
 	schreibeTextInGrosseBestenliste(bestenlisteneintraege[0].name, 425 + offsetX, 240 + offsetY, drawCursor && namenseingabe_bestenlisteIndex == 0, highlighted && namenseingabe_bestenlisteIndex == 0);
 	schreibeZahlInGrosseBestenliste(bestenlisteneintraege[0].punkte, 855 + offsetX, 240 + offsetY, highlighted && namenseingabe_bestenlisteIndex == 0);
@@ -2812,8 +2835,7 @@ void loopContent_namenseingabe() {
 	}
 
 	//Clear screen
-	SDL_SetRenderDrawColor(renderer, 0x74, 0xA8, 0xFC, 255);
-	SDL_RenderClear(renderer);
+	SDL_FillRect(windowSurface, NULL, SDL_MapRGB(windowSurface->format, 0x74, 0xA8, 0xFC));
 
 	game_maleMastkorb();
 
@@ -2831,7 +2853,7 @@ void loopContent_namenseingabe() {
 	destRect.y = 320;
 	destRect.w = 400;
 	destRect.h = 400;
-	SDL_RenderCopy(renderer, resource_texture_tastaturersatz, &srcRect, &destRect);
+	SDL_BlitSurface(resource_surface_tastaturersatz, &srcRect, windowSurface, &destRect);
 	if (leftAnalogStickZone >= 0) {
 		srcRect.x = leftAnalogStickZone % 4 * 200 + 400;
 		srcRect.y = leftAnalogStickZone / 4 * 200;
@@ -2873,11 +2895,11 @@ void loopContent_namenseingabe() {
 			destRect.y = 320 + 0;
 			break;
 		}
-		SDL_RenderCopy(renderer, resource_texture_tastaturersatz, &srcRect, &destRect);
+		SDL_BlitSurface(resource_surface_tastaturersatz, &srcRect, windowSurface, &destRect);
 	}
 
 
-	SDL_RenderPresent(renderer);
+	SDL_UpdateWindowSurface(window);
 }
 
 //Simpler, kryptografisch unsischerer Verschluesselungsalgorithmus... wer unbedingt schummeln will kann ja eh im Quelltext nachgucken
@@ -2916,8 +2938,7 @@ void loopContent_uebergangBonustabelleNamenseingabe() {
 
 	if (deltaTime < 1000) {
 		//Clear screen
-		SDL_SetRenderDrawColor(renderer, 0x74, 0xA8, 0xFC, 255);
-		SDL_RenderClear(renderer);
+		SDL_FillRect(windowSurface, NULL, SDL_MapRGB(windowSurface->format, 0x74, 0xA8, 0xFC));
 
 		game_maleMastkorb();
 
@@ -2926,7 +2947,7 @@ void loopContent_uebergangBonustabelleNamenseingabe() {
 
 		game_maleHud(GAME_LENGTH, 0);
 
-		SDL_RenderPresent(renderer);
+		SDL_UpdateWindowSurface(window);
 	}
 	else {
 		state = STATE_NAMENSEINGABE;
@@ -2957,8 +2978,7 @@ void loopContent_uebergangBestenlisteHauptmenue() {
 	}
 
 	//Clear screen
-	SDL_SetRenderDrawColor(renderer, 0x74, 0xA8, 0xFC, 255);
-	SDL_RenderClear(renderer);
+	SDL_FillRect(windowSurface, NULL, SDL_MapRGB(windowSurface->format, 0x74, 0xA8, 0xFC));
 
 	Sint16 zurueckgelegterWeg = (582 + 720 - 40) * deltaTime / 1000;
 
@@ -2968,7 +2988,7 @@ void loopContent_uebergangBestenlisteHauptmenue() {
 
 	game_maleHud(GAME_LENGTH, -zurueckgelegterWeg);
 
-	SDL_RenderPresent(renderer);
+	SDL_UpdateWindowSurface(window);
 
 }
 
@@ -2998,8 +3018,7 @@ void loopContent_pause() {
 	Uint32 deltaTime = aktuellerStatus_pause_globalStarttime - aktuellerStatus_globalStarttime;
 
 	//Clear screen
-	SDL_SetRenderDrawColor(renderer, 0x74, 0xA8, 0xFC, 255);
-	SDL_RenderClear(renderer);
+	SDL_FillRect(windowSurface, NULL, SDL_MapRGB(windowSurface->format, 0x74, 0xA8, 0xFC));
 
 	game_maleMastkorb();
 
@@ -3020,10 +3039,10 @@ void loopContent_pause() {
 	destRect.h = 37;
 
 	if (SDL_GetTicks() % 1000 > 500) {
-		SDL_RenderCopy(renderer, resource_texture_hud, &srcRect, &destRect);
+		SDL_BlitSurface(resource_surface_hud, &srcRect, windowSurface, &destRect);
 	}
 
-	SDL_RenderPresent(renderer);
+	SDL_UpdateWindowSurface(window);
 }
 
 void loopContent_quitToMainMenu() {
@@ -3085,8 +3104,7 @@ void loopContent_quitToMainMenu() {
 	Uint32 deltaTime = aktuellerStatus_pause_globalStarttime - aktuellerStatus_globalStarttime;
 
 	//Clear screen
-	SDL_SetRenderDrawColor(renderer, 0x74, 0xA8, 0xFC, 255);
-	SDL_RenderClear(renderer);
+	SDL_FillRect(windowSurface, NULL, SDL_MapRGB(windowSurface->format, 0x74, 0xA8, 0xFC));
 
 	game_maleMastkorb();
 
@@ -3102,7 +3120,7 @@ void loopContent_quitToMainMenu() {
 	textDestRect.y = 240;
 	textDestRect.w = 520;
 	textDestRect.h = 220;
-	SDL_RenderCopy(renderer, resource_texture_quit, &textSrcRect, &textDestRect);
+	SDL_BlitSurface(resource_surface_quit, &textSrcRect, windowSurface, &textDestRect);
 
 	SDL_Rect auswahlSrcRect;
 	auswahlSrcRect.x = (SDL_GetTicks() % 500 > 250) ? 6 : 163;
@@ -3112,11 +3130,11 @@ void loopContent_quitToMainMenu() {
 	SDL_Rect auswahlDestRect;
 	auswahlDestRect.x = selectedMenuItem == 0 ? 380 + 98 : 380 + 267;
 	auswahlDestRect.y = 240 + 128;
-	auswahlDestRect.w = 150;
-	auswahlDestRect.h = 120;
-	SDL_RenderCopy(renderer, resource_texture_quit, &auswahlSrcRect, &auswahlDestRect);
+	auswahlDestRect.w = 51;
+	auswahlDestRect.h = 38;
+	SDL_BlitSurface(resource_surface_quit, &auswahlSrcRect, windowSurface, &auswahlDestRect);
 
-	SDL_RenderPresent(renderer);
+	SDL_UpdateWindowSurface(window);
 }
 
 void loopContent_uebergangGameHauptmenue() {
@@ -3139,8 +3157,7 @@ void loopContent_uebergangGameHauptmenue() {
 	}
 
 	//Clear screen
-	SDL_SetRenderDrawColor(renderer, 0x74, 0xA8, 0xFC, 255);
-	SDL_RenderClear(renderer);
+	SDL_FillRect(windowSurface, NULL, SDL_MapRGB(windowSurface->format, 0x74, 0xA8, 0xFC));
 
 	Sint16 zurueckgelegterWeg = (582 + 720 - 40) * deltaTime / 1000;
 
@@ -3156,11 +3173,11 @@ void loopContent_uebergangGameHauptmenue() {
 	textDestRect.y = 240 - zurueckgelegterWeg;
 	textDestRect.w = 520;
 	textDestRect.h = 220;
-	SDL_RenderCopy(renderer, resource_texture_quit, &textSrcRect, &textDestRect);
+	blitSurface(resource_surface_quit, &textSrcRect, windowSurface, &textDestRect);
 
 	game_maleHud(GAME_LENGTH, -zurueckgelegterWeg);
 
-	SDL_RenderPresent(renderer);
+	SDL_UpdateWindowSurface(window);
 
 }
 
