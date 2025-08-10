@@ -23,6 +23,7 @@
 
 #include<stdio.h>
 #include<cstdlib>
+#include<string.h>
 
 
 #ifdef _WIN32
@@ -229,6 +230,7 @@ struct StructGamepad {
 	EnumDigitalisierteXPositionVonAnalogstick analogstickRechtsDigitaleXPosition;
 	EnumDigitalisierteXPositionVonAnalogstick alteWerteAnalogstickLinksDigitaleXPosition;
 	EnumDigitalisierteXPositionVonAnalogstick alteWerteAnalogstickRechtsDigitaleXPosition;
+	bool isPyraInput;
 };
 struct StructGamepad gamepads[10];
 int anzahlGamepads;
@@ -624,6 +626,8 @@ void initGamepads()
 			gamepads[anzahlGamepads].analogstickRechtsDigitaleXPosition = DIGITAL_X_ZENTRIERT;
 			gamepads[anzahlGamepads].alteWerteAnalogstickLinksDigitaleXPosition = DIGITAL_X_ZENTRIERT;
 			gamepads[anzahlGamepads].alteWerteAnalogstickRechtsDigitaleXPosition = DIGITAL_X_ZENTRIERT;
+			gamepads[anzahlGamepads].isPyraInput = strcmp(SDL_GameControllerName(gamepads[anzahlGamepads].gameController), "pyraInput Gamepad") == 0;
+			//gamepads[anzahlGamepads].isPyraInput = strcmp(SDL_GameControllerName(gamepads[anzahlGamepads].gameController), "Xbox 360 Controller") == 0;
 			anzahlGamepads++;
 			if (anzahlGamepads == 10) {
 				break;
@@ -820,8 +824,8 @@ void hauptmenue_init() {
 	pyrat_sprechen_textindex = 2;
 	pyrat_sprechen_laute = "AOI PIRAT .....DU IA ALREDI SII TEE DREGENS ...TEN TAKE IER KATLAS AND UP TO TEE KROWS NEST IA GO .....";
 	pyrat_sprechen_anzahlLaute = 103;
-	pyrat_sprechen_textindex2 = 10;
-	pyrat_sprechen_laute2 = "IUS TEE ANALOG STIKS OR NABS TUU POSIKEN TEE START AND END OF IER KAT .....IE KEN KAT WIT TEE KOULDER BATENS .....                   ";
+	pyrat_sprechen_textindex2 = anzahlGamepads == 1 && gamepads[0].isPyraInput ? 10 : 11;
+	pyrat_sprechen_laute2 = "IUS TEE ANALOG NABS TUU POSIKEN TEE START AND END OF IER KAT .....IE KEN KAT WIT TEE KOULDER BATENS .....                   ";
 	pyrat_sprechen_anzahlLaute2 = 133;
 
 	pyrat_armanimation_globalStarttime = 0;
@@ -2763,41 +2767,49 @@ void loopContent_namenseingabe() {
 				namenseingabe_removeChar();
 				break;
 			case SDL_CONTROLLER_BUTTON_A:
-				if (leftAnalogStickZone >= 0 && leftAnalogStickZone < 6) {
-					namenseingabe_addChar('D' + leftAnalogStickZone * 4);
-				}
-				else if (leftAnalogStickZone == 6) {
-					namenseingabe_addChar('-');
-				}
-				else if (leftAnalogStickZone == 7) {
-					namenseingabe_addChar(' ');
+				if (!gamepads[aktiverGameController_index].isPyraInput) {
+					if (leftAnalogStickZone >= 0 && leftAnalogStickZone < 6) {
+						namenseingabe_addChar('D' + leftAnalogStickZone * 4);
+					}
+					else if (leftAnalogStickZone == 6) {
+						namenseingabe_addChar('-');
+					}
+					else if (leftAnalogStickZone == 7) {
+						namenseingabe_addChar(' ');
+					}
 				}
 				break;
 			case SDL_CONTROLLER_BUTTON_B:
-				if (leftAnalogStickZone >= 0 && leftAnalogStickZone < 6) {
-					namenseingabe_addChar('C' + leftAnalogStickZone * 4);
-				}
-				else if (leftAnalogStickZone == 6) {
-					namenseingabe_addChar('.');
-				}
-				else if (leftAnalogStickZone == 7) {
-					weiterGedrueckt = true;
+				if (!gamepads[aktiverGameController_index].isPyraInput) {
+					if (leftAnalogStickZone >= 0 && leftAnalogStickZone < 6) {
+						namenseingabe_addChar('C' + leftAnalogStickZone * 4);
+					}
+					else if (leftAnalogStickZone == 6) {
+						namenseingabe_addChar('.');
+					}
+					else if (leftAnalogStickZone == 7) {
+						weiterGedrueckt = true;
+					}
 				}
 				break;
 			case SDL_CONTROLLER_BUTTON_X:
-				if (leftAnalogStickZone >= 0 && leftAnalogStickZone < 7) {
-					namenseingabe_addChar('A' + leftAnalogStickZone * 4);
-				}
-				else if (leftAnalogStickZone == 7) {
-					namenseingabe_addChar(' ');
+				if (!gamepads[aktiverGameController_index].isPyraInput) {
+					if (leftAnalogStickZone >= 0 && leftAnalogStickZone < 7) {
+						namenseingabe_addChar('A' + leftAnalogStickZone * 4);
+					}
+					else if (leftAnalogStickZone == 7) {
+						namenseingabe_addChar(' ');
+					}
 				}
 				break;
 			case SDL_CONTROLLER_BUTTON_Y:
-				if (leftAnalogStickZone >= 0 && leftAnalogStickZone < 7) {
-					namenseingabe_addChar('B' + leftAnalogStickZone * 4);
-				}
-				else if (leftAnalogStickZone == 7) {
-					namenseingabe_removeChar();
+				if (!gamepads[aktiverGameController_index].isPyraInput) {
+					if (leftAnalogStickZone >= 0 && leftAnalogStickZone < 7) {
+						namenseingabe_addChar('B' + leftAnalogStickZone * 4);
+					}
+					else if (leftAnalogStickZone == 7) {
+						namenseingabe_removeChar();
+					}
 				}
 				break;
 			}
@@ -2821,61 +2833,62 @@ void loopContent_namenseingabe() {
 
 	game_maleHud(GAME_LENGTH, 0);
 
-	SDL_Rect srcRect;
-	srcRect.x = 0;
-	srcRect.y = 0;
-	srcRect.w = 400;
-	srcRect.h = 400;
-	SDL_Rect destRect;
-	destRect.x = 0;
-	destRect.y = 320;
-	destRect.w = 400;
-	destRect.h = 400;
-	SDL_RenderCopy(renderer, resource_texture_tastaturersatz, &srcRect, &destRect);
-	if (leftAnalogStickZone >= 0) {
-		srcRect.x = leftAnalogStickZone % 4 * 200 + 400;
-		srcRect.y = leftAnalogStickZone / 4 * 200;
-		srcRect.w = 200;
-		srcRect.h = 200;
-		destRect.w = 200;
-		destRect.h = 200;
-		switch (leftAnalogStickZone) {
-		case 0:
-			destRect.x = 100;
-			destRect.y = 320 + 0;
-			break;
-		case 1:
-			destRect.x = 200;
-			destRect.y = 320 + 0;
-			break;
-		case 2:
-			destRect.x = 200;
-			destRect.y = 320 + 100;
-			break;
-		case 3:
-			destRect.x = 200;
-			destRect.y = 320 + 200;
-			break;
-		case 4:
-			destRect.x = 100;
-			destRect.y = 320 + 200;
-			break;
-		case 5:
-			destRect.x = 0;
-			destRect.y = 320 + 200;
-			break;
-		case 6:
-			destRect.x = 0;
-			destRect.y = 320 + 100;
-			break;
-		case 7:
-			destRect.x = 0;
-			destRect.y = 320 + 0;
-			break;
-		}
+	if (!gamepads[aktiverGameController_index].isPyraInput) {
+		SDL_Rect srcRect;
+		srcRect.x = 0;
+		srcRect.y = 0;
+		srcRect.w = 400;
+		srcRect.h = 400;
+		SDL_Rect destRect;
+		destRect.x = 0;
+		destRect.y = 320;
+		destRect.w = 400;
+		destRect.h = 400;
 		SDL_RenderCopy(renderer, resource_texture_tastaturersatz, &srcRect, &destRect);
+		if (leftAnalogStickZone >= 0) {
+			srcRect.x = leftAnalogStickZone % 4 * 200 + 400;
+			srcRect.y = leftAnalogStickZone / 4 * 200;
+			srcRect.w = 200;
+			srcRect.h = 200;
+			destRect.w = 200;
+			destRect.h = 200;
+			switch (leftAnalogStickZone) {
+			case 0:
+				destRect.x = 100;
+				destRect.y = 320 + 0;
+				break;
+			case 1:
+				destRect.x = 200;
+				destRect.y = 320 + 0;
+				break;
+			case 2:
+				destRect.x = 200;
+				destRect.y = 320 + 100;
+				break;
+			case 3:
+				destRect.x = 200;
+				destRect.y = 320 + 200;
+				break;
+			case 4:
+				destRect.x = 100;
+				destRect.y = 320 + 200;
+				break;
+			case 5:
+				destRect.x = 0;
+				destRect.y = 320 + 200;
+				break;
+			case 6:
+				destRect.x = 0;
+				destRect.y = 320 + 100;
+				break;
+			case 7:
+				destRect.x = 0;
+				destRect.y = 320 + 0;
+				break;
+			}
+			SDL_RenderCopy(renderer, resource_texture_tastaturersatz, &srcRect, &destRect);
+		}
 	}
-
 
 	SDL_RenderPresent(renderer);
 }
