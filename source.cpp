@@ -54,12 +54,12 @@ int erstelleOrdner(const char * const filename) {
 
 
 #define DRACHESPRITE_NUMBER_FRAMES 112
-#define DRACHESPRITE_WIDTH 236
-#define DRACHESPRITE_HEIGHT 94
+#define DRACHESPRITE_WIDTH 118
+#define DRACHESPRITE_HEIGHT 47
 
 
-static const int SCREEN_WIDTH = 1280;
-static const int SCREEN_HEIGHT = 720;
+static const int SCREEN_WIDTH = 640;
+static const int SCREEN_HEIGHT = 360;
 static const int GAME_LENGTH = 99500;
 
 static const int BONUSPUNKTE_DOUBLE = 128;
@@ -383,7 +383,7 @@ int main(int argc, char* args[])
 
 
 	//Create window
-	window = SDL_CreateWindow("Slay The Dragons", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, vollbildEingeschaltet ? SDL_WINDOW_FULLSCREEN : 0);
+	window = SDL_CreateWindow("Slay The Dragons", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, 0);
 
 	if (window == NULL) {
 		printf("%s", SDL_GetError());
@@ -917,24 +917,24 @@ void loopContent_hauptmenue() {
 	SDL_Rect menuSrcRect;
 	SDL_Rect menuDestRect;
 
-	menuSrcRect.x = deltaTime % 857 > 426 ? 0 : 360;
-	menuSrcRect.w = 360;
-	menuSrcRect.h = 64;
-	menuDestRect.x = 460;
-	menuDestRect.w = 360;
-	menuDestRect.h = 64;
+	menuSrcRect.x = deltaTime % 857 > 426 ? 0 : 180;
+	menuSrcRect.w = 180;
+	menuSrcRect.h = 32;
+	menuDestRect.x = 230;
+	menuDestRect.w = 180;
+	menuDestRect.h = 32;
 	switch (selectedMenuItem) {
 	case 0:
 		menuSrcRect.y = 0;
-		menuDestRect.y = 328;
+		menuDestRect.y = 164;
 		break;
 	case 1:
-		menuSrcRect.y = 64;
-		menuDestRect.y = 418;
+		menuSrcRect.y = 32;
+		menuDestRect.y = 209;
 		break;
 	case 2:
-		menuSrcRect.y = 128;
-		menuDestRect.y = 508;
+		menuSrcRect.y = 64;
+		menuDestRect.y = 254;
 		break;
 	}
 	
@@ -966,23 +966,23 @@ void malePyrat(const Sint16 offsetY) {
 		if (sprechframeIndex < pyrat_sprechen_anzahlLaute + pyrat_sprechen_anzahlLaute2) {
 			//Blase malen
 			SDL_Rect blaseDestRect;
-			blaseDestRect.x = 932;
-			blaseDestRect.y = 249 + offsetY;
-			blaseDestRect.w = 346;
-			blaseDestRect.h = 228;
+			blaseDestRect.x = 466;
+			blaseDestRect.y = 125 + offsetY;
+			blaseDestRect.w = 173;
+			blaseDestRect.h = 114;
 			SDL_RenderCopy(renderer, resource_texture_sprechblase, NULL, &blaseDestRect);
 
 			//Text malen
 			SDL_Rect textSrcRect;
 			textSrcRect.x = 0;
-			textSrcRect.y = 103 * (sprechframeIndex < pyrat_sprechen_anzahlLaute ? pyrat_sprechen_textindex : pyrat_sprechen_textindex2);
-			textSrcRect.w = 307;
-			textSrcRect.h = 103;
+			textSrcRect.y = 51 * (sprechframeIndex < pyrat_sprechen_anzahlLaute ? pyrat_sprechen_textindex : pyrat_sprechen_textindex2);
+			textSrcRect.w = 153;
+			textSrcRect.h = 52;
 			SDL_Rect textDestRect;
-			textDestRect.x = 951;
-			textDestRect.y = 269 + offsetY;
-			textDestRect.w = 307;
-			textDestRect.h = 103;
+			textDestRect.x = 475;
+			textDestRect.y = 135 + offsetY;
+			textDestRect.w = 153;
+			textDestRect.h = 51;
 			SDL_RenderCopy(renderer, resource_texture_pyratTexte, &textSrcRect, &textDestRect);
 
 			//Mundebewegungen
@@ -1043,15 +1043,15 @@ void malePyrat(const Sint16 offsetY) {
 
 			if (srcRectIndex >= 0) {
 				SDL_Rect srcRect;
-				srcRect.x = 125 * srcRectIndex;
+				srcRect.x = 63 * srcRectIndex;
 				srcRect.y = 0;
-				srcRect.w = 125;
-				srcRect.h = 152;
+				srcRect.w = 63;
+				srcRect.h = 76;
 				SDL_Rect destRect;
-				destRect.x = 1140;
-				destRect.y = 378 + offsetY;
-				destRect.w = 125;
-				destRect.h = 152;
+				destRect.x = 570;
+				destRect.y = 189 + offsetY;
+				destRect.w = 63;
+				destRect.h = 76;
 				SDL_RenderCopy(renderer, resource_texture_pyratKopf, &srcRect, &destRect);
 			}
 		}
@@ -1075,10 +1075,10 @@ void malePyrat(const Sint16 offsetY) {
 		int armFrameIndex = (currentTime - pyrat_armanimation_globalStarttime) / 33;
 		if (armFrameIndex < 60) {
 			SDL_Rect destRect;
-			destRect.x = 998;
-			destRect.y = 349 + offsetY;
-			destRect.w = 160;
-			destRect.h = 240;
+			destRect.x = 499;
+			destRect.y = 175 + offsetY;
+			destRect.w = 80;
+			destRect.h = 120;
 			SDL_RenderCopy(renderer, resource_texture_pyratArm[armFrameIndex < 30 ? armFrameIndex : 59 - armFrameIndex], NULL, &destRect);
 		}
 	}
@@ -1087,15 +1087,15 @@ void malePyrat(const Sint16 offsetY) {
 	int augeFrameIndex = (currentTime / 33) % 300;
 	if (augeFrameIndex < 20) {
 		SDL_Rect srcRect;
-		srcRect.x = 21 * (augeFrameIndex < 10 ? augeFrameIndex : 19 - augeFrameIndex);
+		srcRect.x = 10 * (augeFrameIndex < 10 ? augeFrameIndex : 19 - augeFrameIndex);
 		srcRect.y = 0;
-		srcRect.w = 21;
-		srcRect.h = 11;
+		srcRect.w = 10;
+		srcRect.h = 5;
 		SDL_Rect destRect;
-		destRect.x = 1168;
-		destRect.y = 450 + offsetY + augeOffsetY;
-		destRect.w = 21;
-		destRect.h = 11;
+		destRect.x = 584;
+		destRect.y = 225 + offsetY + augeOffsetY;
+		destRect.w = 10;
+		destRect.h = 5;
 		SDL_RenderCopy(renderer, resource_texture_pyratAuge, &srcRect, &destRect);
 	}
 }
@@ -1255,24 +1255,24 @@ void schreibeZahlInBestenliste(const Uint32 zahl, const Sint16 left, const Sint1
 
 void maleMenueHintergrund(const Sint16 offsetY)
 {
-	if (offsetY <= 582) {
+	if (offsetY <= 291) {
 		SDL_Rect backgroundRect;
 		backgroundRect.x = 0;
-		backgroundRect.y = 582 - offsetY;
-		backgroundRect.w = 1280;
-		backgroundRect.h = 720;
+		backgroundRect.y = 291 - offsetY;
+		backgroundRect.w = 640;
+		backgroundRect.h = 360;
 		SDL_RenderCopy(renderer, resource_texture_hauptmenue_hintergrund, &backgroundRect, NULL);
 	}
 	else {
 		SDL_Rect srcRect;
 		srcRect.x = 0;
 		srcRect.y = 0;
-		srcRect.w = 1280;
-		srcRect.h = 720 + 582 - offsetY;
+		srcRect.w = 640;
+		srcRect.h = 360 + 291 - offsetY;
 		SDL_Rect destRect;
 		destRect.x = 0;
-		destRect.y = offsetY - 582;
-		destRect.w = 1280;
+		destRect.y = offsetY - 291;
+		destRect.w = 640;
 		destRect.h = srcRect.h;
 		SDL_RenderCopy(renderer, resource_texture_hauptmenue_hintergrund, &srcRect, &destRect);
 	}
@@ -1281,14 +1281,14 @@ void maleMenueHintergrund(const Sint16 offsetY)
 		int frameIndex = (SDL_GetTicks() / 33) % 60;
 		SDL_Rect fahneSrcRect;
 		fahneSrcRect.x = 0;
-		fahneSrcRect.y = 62 * (frameIndex >= 30 ? 60 - frameIndex : frameIndex);
-		fahneSrcRect.w = 121;
-		fahneSrcRect.h = 62;
+		fahneSrcRect.y = 31 * (frameIndex >= 30 ? 60 - frameIndex : frameIndex);
+		fahneSrcRect.w = 60;
+		fahneSrcRect.h = 31;
 		SDL_Rect fahneDestRect;
-		fahneDestRect.x = 92;
-		fahneDestRect.y = 319 - 582 + offsetY;
-		fahneDestRect.w = 121;
-		fahneDestRect.h = 62;
+		fahneDestRect.x = 46;
+		fahneDestRect.y = 159 - 291 + offsetY;
+		fahneDestRect.w = 60;
+		fahneDestRect.h = 31;
 		SDL_RenderCopy(renderer, resource_texture_fahne, &fahneSrcRect, &fahneDestRect);
 	}
 
@@ -1897,10 +1897,10 @@ void loopContent_uebergangHauptmenueGame() {
 		menueHintergrundOffsetY = 0;
 	}
 	else if (deltaTime < DAUER_SCROLL_UP + DAUER_WAIT_BEFORE_SCROLL) {
-		menueHintergrundOffsetY = (582 + 720 - 40) * (deltaTime - DAUER_WAIT_BEFORE_SCROLL) / DAUER_SCROLL_UP;
+		menueHintergrundOffsetY = (291 + 360 - 20) * (deltaTime - DAUER_WAIT_BEFORE_SCROLL) / DAUER_SCROLL_UP;
 	}
 	else {
-		menueHintergrundOffsetY = 680 + 582;
+		menueHintergrundOffsetY = 340 + 291;
 	}
 	maleMenueHintergrund(menueHintergrundOffsetY);
 
