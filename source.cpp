@@ -222,6 +222,7 @@ Uint32 pyrat_armanimation_globalStarttime;
 
 struct StructGamepad {
 	SDL_GameController *gameController;
+	SDL_Joystick* joystick;
 	EnumDigitalisierteYPositionVonAnalogstick analogstickLinksDigitaleYPosition;
 	EnumDigitalisierteYPositionVonAnalogstick analogstickRechtsDigitaleYPosition;
 	EnumDigitalisierteYPositionVonAnalogstick alteWerteAnalogstickLinksDigitaleYPosition;
@@ -236,6 +237,7 @@ struct StructGamepad gamepads[10];
 int anzahlGamepads;
 int aktiverGameController_index;
 SDL_GameController *aktiverGameController;
+SDL_Joystick* aktiverJoystick;
 
 
 struct StructDrache {
@@ -282,6 +284,42 @@ struct StructBestenlisteneintrag {
 struct StructBestenlisteneintrag bestenlisteneintraege[5];
 int namenseingabe_bestenlisteIndex;
 
+
+
+
+Sint16 getGamepadLeftX(SDL_GameController *gameController, SDL_Joystick *joystick) {
+	if (gameController != NULL) {
+		return SDL_GameControllerGetAxis(gameController, SDL_CONTROLLER_AXIS_LEFTX);
+	}
+	return SDL_JoystickGetAxis(joystick, 0);
+}
+Sint16 getGamepadLeftY(SDL_GameController *gameController, SDL_Joystick *joystick) {
+	if (gameController != NULL) {
+		return SDL_GameControllerGetAxis(gameController, SDL_CONTROLLER_AXIS_LEFTY);
+	}
+	return SDL_JoystickGetAxis(joystick, 1);
+}
+Sint16 getGamepadRightX(SDL_GameController *gameController, SDL_Joystick *joystick) {
+	if (gameController != NULL) {
+		return SDL_GameControllerGetAxis(gameController, SDL_CONTROLLER_AXIS_RIGHTX);
+	}
+	return SDL_JoystickGetAxis(joystick, 2);
+}
+Sint16 getGamepadRightY(SDL_GameController *gameController, SDL_Joystick *joystick) {
+	if (gameController != NULL) {
+		return SDL_GameControllerGetAxis(gameController, SDL_CONTROLLER_AXIS_RIGHTY);
+	}
+	return SDL_JoystickGetAxis(joystick, 3);
+}
+
+bool isGameController(SDL_JoystickID which) {
+	for (int i=0; i<anzahlGamepads; i++) {
+		if (SDL_JoystickInstanceID(gamepads[i].joystick) == which) {
+			return gamepads[i].gameController != NULL;
+		}
+	}
+	return false;
+}
 
 
 void ladeBestenliste() {
@@ -393,7 +431,7 @@ int main(int argc, char* args[])
 	else
 	{
 		renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
-		
+
 		SDL_ShowCursor(SDL_DISABLE);
 
 
@@ -562,7 +600,12 @@ int main(int argc, char* args[])
 	Mix_FreeChunk(resource_sound_pause);
 
 	for (int i = 0; i < anzahlGamepads; i++) {
-		SDL_GameControllerClose(gamepads[i].gameController);
+		if (gamepads[i].gameController != NULL) {
+			SDL_GameControllerClose(gamepads[i].gameController);
+		}
+		else {
+			SDL_JoystickClose(gamepads[i].joystick);
+		}
 	}
 
 	//Destroy window
@@ -618,20 +661,25 @@ void initGamepads()
 	for (int i = 0; i < anzahlJoysticks; i++) {
 		if (SDL_IsGameController(i)) {
 			gamepads[anzahlGamepads].gameController = SDL_GameControllerOpen(i);
-			gamepads[anzahlGamepads].analogstickLinksDigitaleYPosition = DIGITAL_Y_ZENTRIERT;
-			gamepads[anzahlGamepads].analogstickRechtsDigitaleYPosition = DIGITAL_Y_ZENTRIERT;
-			gamepads[anzahlGamepads].alteWerteAnalogstickLinksDigitaleYPosition = DIGITAL_Y_ZENTRIERT;
-			gamepads[anzahlGamepads].alteWerteAnalogstickRechtsDigitaleYPosition = DIGITAL_Y_ZENTRIERT;
-			gamepads[anzahlGamepads].analogstickLinksDigitaleXPosition = DIGITAL_X_ZENTRIERT;
-			gamepads[anzahlGamepads].analogstickRechtsDigitaleXPosition = DIGITAL_X_ZENTRIERT;
-			gamepads[anzahlGamepads].alteWerteAnalogstickLinksDigitaleXPosition = DIGITAL_X_ZENTRIERT;
-			gamepads[anzahlGamepads].alteWerteAnalogstickRechtsDigitaleXPosition = DIGITAL_X_ZENTRIERT;
+			gamepads[anzahlGamepads].joystick = SDL_GameControllerGetJoystick(gamepads[i].gameController);
 			gamepads[anzahlGamepads].isPyraInput = strcmp(SDL_GameControllerName(gamepads[anzahlGamepads].gameController), "pyraInput Gamepad") == 0;
-			//gamepads[anzahlGamepads].isPyraInput = strcmp(SDL_GameControllerName(gamepads[anzahlGamepads].gameController), "Xbox 360 Controller") == 0;
-			anzahlGamepads++;
-			if (anzahlGamepads == 10) {
-				break;
-			}
+		}
+		else {
+			gamepads[anzahlGamepads].gameController = NULL;
+			gamepads[anzahlGamepads].joystick = SDL_JoystickOpen(i);
+			gamepads[anzahlGamepads].isPyraInput = strcmp(SDL_JoystickName(gamepads[anzahlGamepads].joystick), "pyraInput Gamepad") == 0;
+		}
+		gamepads[anzahlGamepads].analogstickLinksDigitaleYPosition = DIGITAL_Y_ZENTRIERT;
+		gamepads[anzahlGamepads].analogstickRechtsDigitaleYPosition = DIGITAL_Y_ZENTRIERT;
+		gamepads[anzahlGamepads].alteWerteAnalogstickLinksDigitaleYPosition = DIGITAL_Y_ZENTRIERT;
+		gamepads[anzahlGamepads].alteWerteAnalogstickRechtsDigitaleYPosition = DIGITAL_Y_ZENTRIERT;
+		gamepads[anzahlGamepads].analogstickLinksDigitaleXPosition = DIGITAL_X_ZENTRIERT;
+		gamepads[anzahlGamepads].analogstickRechtsDigitaleXPosition = DIGITAL_X_ZENTRIERT;
+		gamepads[anzahlGamepads].alteWerteAnalogstickLinksDigitaleXPosition = DIGITAL_X_ZENTRIERT;
+		gamepads[anzahlGamepads].alteWerteAnalogstickRechtsDigitaleXPosition = DIGITAL_X_ZENTRIERT;
+		anzahlGamepads++;
+		if (anzahlGamepads == 10) {
+			break;
 		}
 	}
 }
@@ -641,9 +689,14 @@ void handleGlobalEvents(const SDL_Event* const e) {
 	if (e->type == SDL_QUIT) {
 		quit = true;
 	}
-	else if (e->type == SDL_CONTROLLERDEVICEADDED || e->type == SDL_CONTROLLERDEVICEREMOVED) {
+	else if (e->type == SDL_CONTROLLERDEVICEADDED || e->type == SDL_CONTROLLERDEVICEREMOVED || e->type == SDL_JOYDEVICEADDED || e->type == SDL_JOYDEVICEREMOVED) {
 		for (int i = 0; i < anzahlGamepads; i++) {
-			SDL_GameControllerClose(gamepads[i].gameController);
+			if (gamepads[i].gameController != NULL) {
+				SDL_GameControllerClose(gamepads[i].gameController);
+			}
+			else {
+				SDL_JoystickClose(gamepads[i].joystick);
+			}
 		}
 
 		initGamepads();
@@ -665,7 +718,7 @@ void updateAnalogstickDigitaleYPositionen() {
 		gamepads[i].alteWerteAnalogstickLinksDigitaleYPosition = gamepads[i].analogstickLinksDigitaleYPosition;
 		gamepads[i].alteWerteAnalogstickRechtsDigitaleYPosition = gamepads[i].analogstickRechtsDigitaleYPosition;
 
-		Sint16 leftY = SDL_GameControllerGetAxis(gamepads[i].gameController, SDL_CONTROLLER_AXIS_LEFTY);
+		Sint16 leftY = getGamepadLeftY(gamepads[i].gameController, gamepads[i].joystick);
 		if (leftY < -16000) {
 			gamepads[i].analogstickLinksDigitaleYPosition = DIGITAL_Y_OBEN;
 		}
@@ -700,7 +753,7 @@ void updateAnalogstickDigitaleYPositionen() {
 			gamepads[i].analogstickLinksDigitaleYPosition = DIGITAL_Y_ZENTRIERT;
 		}
 
-		Sint16 rightY = SDL_GameControllerGetAxis(gamepads[i].gameController, SDL_CONTROLLER_AXIS_RIGHTY);
+		Sint16 rightY = getGamepadRightY(gamepads[i].gameController, gamepads[i].joystick);
 		if (rightY < -16000) {
 			gamepads[i].analogstickRechtsDigitaleYPosition = DIGITAL_Y_OBEN;
 		}
@@ -741,7 +794,7 @@ void updateAnalogstickDigitaleXPositionen(int index) {
 	gamepads[index].alteWerteAnalogstickLinksDigitaleXPosition = gamepads[index].analogstickLinksDigitaleXPosition;
 	gamepads[index].alteWerteAnalogstickRechtsDigitaleXPosition = gamepads[index].analogstickRechtsDigitaleXPosition;
 
-	Sint16 leftX = SDL_GameControllerGetAxis(gamepads[index].gameController, SDL_CONTROLLER_AXIS_LEFTX);
+	Sint16 leftX = getGamepadLeftX(gamepads[index].gameController, gamepads[index].joystick);
 	if (leftX < -16000) {
 		gamepads[index].analogstickLinksDigitaleXPosition = DIGITAL_X_LINKS;
 	}
@@ -776,7 +829,7 @@ void updateAnalogstickDigitaleXPositionen(int index) {
 		gamepads[index].analogstickLinksDigitaleXPosition = DIGITAL_X_ZENTRIERT;
 	}
 
-	Sint16 rightX = SDL_GameControllerGetAxis(gamepads[index].gameController, SDL_CONTROLLER_AXIS_RIGHTX);
+	Sint16 rightX = getGamepadRightX(gamepads[index].gameController, gamepads[index].joystick);
 	if (rightX < -16000) {
 		gamepads[index].analogstickRechtsDigitaleXPosition = DIGITAL_X_LINKS;
 	}
@@ -841,28 +894,61 @@ void loopContent_hauptmenue() {
 
 		if (e.type == SDL_KEYDOWN) {
 			switch (e.key.keysym.sym) {
-			case SDLK_ESCAPE:
-				quit = true;
-				break;
+				case SDLK_ESCAPE:
+					quit = true;
+					break;
 			}
 		}
 		else if (e.type == SDL_CONTROLLERBUTTONDOWN) {
 			switch (e.cbutton.button) {
-			case SDL_CONTROLLER_BUTTON_DPAD_UP:
-				selectedMenuItem = (selectedMenuItem + 2) % 3;
-				playSound(resource_sound_menueSelectionChange);
-				break;
-			case SDL_CONTROLLER_BUTTON_DPAD_DOWN:
-				selectedMenuItem = (selectedMenuItem + 1) % 3;
-				playSound(resource_sound_menueSelectionChange);
-				break;
-			case SDL_CONTROLLER_BUTTON_START:
-			case SDL_CONTROLLER_BUTTON_A:
-			case SDL_CONTROLLER_BUTTON_B:
-			case SDL_CONTROLLER_BUTTON_X:
-			case SDL_CONTROLLER_BUTTON_Y:
-				playSound(resource_sound_menueConfirm);
-				switch (selectedMenuItem) {
+				case SDL_CONTROLLER_BUTTON_DPAD_UP:
+					selectedMenuItem = (selectedMenuItem + 2) % 3;
+					playSound(resource_sound_menueSelectionChange);
+					break;
+				case SDL_CONTROLLER_BUTTON_DPAD_DOWN:
+					selectedMenuItem = (selectedMenuItem + 1) % 3;
+					playSound(resource_sound_menueSelectionChange);
+					break;
+				case SDL_CONTROLLER_BUTTON_START:
+				case SDL_CONTROLLER_BUTTON_A:
+				case SDL_CONTROLLER_BUTTON_B:
+				case SDL_CONTROLLER_BUTTON_X:
+				case SDL_CONTROLLER_BUTTON_Y:
+					playSound(resource_sound_menueConfirm);
+					switch (selectedMenuItem) {
+						case 0: //Start slaying
+							state = STATE_UEBERGANG_HAUPTMENUE_GAME;
+							game_init();
+							if (musikEingeschaltet) {
+								Mix_HaltMusic();
+								Mix_PlayMusic(resource_music_game, 1);
+							}
+							aktuellerStatus_globalStarttime = SDL_GetTicks();
+							for (int i = 0; i < anzahlGamepads; i++) {
+								if (e.cbutton.which == SDL_JoystickInstanceID(gamepads[i].joystick)) {
+									aktiverGameController = gamepads[i].gameController;
+									aktiverJoystick = gamepads[i].joystick;
+									aktiverGameController_index = i;
+									break;
+								}
+							}
+							break;
+						case 1: //Options
+							state = STATE_OPTIONS;
+							selectedMenuItem = 0;
+							loopContent_options();
+							return;
+						case 2: //Exit
+							quit = true;
+							break;
+					}
+					break;
+			}
+		}
+		else if (e.type == SDL_JOYBUTTONDOWN && !isGameController(e.jbutton.which)) {
+			//TODO Code-Wiederholung
+			playSound(resource_sound_menueConfirm);
+			switch (selectedMenuItem) {
 				case 0: //Start slaying
 					state = STATE_UEBERGANG_HAUPTMENUE_GAME;
 					game_init();
@@ -872,8 +958,9 @@ void loopContent_hauptmenue() {
 					}
 					aktuellerStatus_globalStarttime = SDL_GetTicks();
 					for (int i = 0; i < anzahlGamepads; i++) {
-						if (e.cbutton.which == SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(gamepads[i].gameController))) {
+						if (e.cbutton.which == SDL_JoystickInstanceID(gamepads[i].joystick)) {
 							aktiverGameController = gamepads[i].gameController;
+							aktiverJoystick = gamepads[i].joystick;
 							aktiverGameController_index = i;
 							break;
 						}
@@ -887,8 +974,18 @@ void loopContent_hauptmenue() {
 				case 2: //Exit
 					quit = true;
 					break;
-				}
-				break;
+			}
+		}
+		else if (e.type == SDL_JOYHATMOTION && !isGameController(e.jhat.which)) {
+			switch (e.jhat.value) {
+				case SDL_HAT_UP:
+					selectedMenuItem = (selectedMenuItem + 2) % 3;
+					playSound(resource_sound_menueSelectionChange);
+					break;
+				case SDL_HAT_DOWN:
+					selectedMenuItem = (selectedMenuItem + 1) % 3;
+					playSound(resource_sound_menueSelectionChange);
+					break;
 			}
 		}
 	}
@@ -941,7 +1038,7 @@ void loopContent_hauptmenue() {
 		menuDestRect.y = 508;
 		break;
 	}
-	
+
 	SDL_RenderCopy(renderer, resource_texture_hauptmenue_texte, &menuSrcRect, &menuDestRect);
 
 	malePyrat(0);
@@ -1432,41 +1529,72 @@ void loopContent_game() {
 	//event loop (Tastatur, Gamepad, Maus)
 	while (SDL_PollEvent(&e) != 0) {
 		handleGlobalEvents(&e);
-		if (e.type == SDL_CONTROLLERBUTTONDOWN && e.cbutton.which == SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(aktiverGameController))) {
+		if (e.type == SDL_CONTROLLERBUTTONDOWN && e.cbutton.which == SDL_JoystickInstanceID(aktiverJoystick)) {
 			switch (e.cbutton.button) {
-			case SDL_CONTROLLER_BUTTON_LEFTSHOULDER:
-				leftShoulderbuttonPressed = true;
-				break;
-			case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER:
-				rightShoulderbuttonPressed = true;
-				break;
-			case SDL_CONTROLLER_BUTTON_START:
-				state = STATE_PAUSE;
-				aktuellerStatus_pause_globalStarttime = currentTime;
-				Mix_PauseMusic();
-				playSound(resource_sound_pause);
-				loopContent_pause();
-				return;
-			case SDL_CONTROLLER_BUTTON_BACK:
-				state = STATE_QUIT_TO_MAIN_MENU;
-				aktuellerStatus_pause_globalStarttime = currentTime;
-				Mix_PauseMusic();
-				playSound(resource_sound_pause);
-				selectedMenuItem = 0;
-				loopContent_quitToMainMenu();
-				return;
+				case SDL_CONTROLLER_BUTTON_LEFTSHOULDER:
+					leftShoulderbuttonPressed = true;
+					break;
+				case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER:
+					rightShoulderbuttonPressed = true;
+					break;
+				case SDL_CONTROLLER_BUTTON_START:
+					state = STATE_PAUSE;
+					aktuellerStatus_pause_globalStarttime = currentTime;
+					Mix_PauseMusic();
+					playSound(resource_sound_pause);
+					loopContent_pause();
+					return;
+				case SDL_CONTROLLER_BUTTON_BACK:
+					state = STATE_QUIT_TO_MAIN_MENU;
+					aktuellerStatus_pause_globalStarttime = currentTime;
+					Mix_PauseMusic();
+					playSound(resource_sound_pause);
+					selectedMenuItem = 0;
+					loopContent_quitToMainMenu();
+					return;
+			}
+		}
+		else if (e.type == SDL_JOYBUTTONDOWN && e.jbutton.which == SDL_JoystickInstanceID(aktiverJoystick) && aktiverGameController == NULL) {
+			switch (e.jbutton.button) {
+				case 8:
+				case 6:
+					leftShoulderbuttonPressed = true;
+					break;
+				case 9:
+				case 7:
+					rightShoulderbuttonPressed = true;
+					break;
+				case 11:
+					state = STATE_PAUSE;
+					aktuellerStatus_pause_globalStarttime = currentTime;
+					Mix_PauseMusic();
+					playSound(resource_sound_pause);
+					loopContent_pause();
+					return;
+			}
+		}
+		if (e.type == SDL_KEYDOWN) {
+			switch (e.key.keysym.sym) {
+				case SDLK_ESCAPE:
+					state = STATE_QUIT_TO_MAIN_MENU;
+					aktuellerStatus_pause_globalStarttime = currentTime;
+					Mix_PauseMusic();
+					playSound(resource_sound_pause);
+					selectedMenuItem = 0;
+					loopContent_quitToMainMenu();
+					return;
 			}
 		}
 	}
 
 	//Analogsticks auslesen: 32767 * wurzel(2)/2 / halbe Bildschirm-Dimension ergibt abgerundet 36 und 64
-	Sint16 leftX = SDL_GameControllerGetAxis(aktiverGameController, SDL_CONTROLLER_AXIS_LEFTX);
+	Sint16 leftX = getGamepadLeftX(aktiverGameController, aktiverJoystick);
 	leftX = clipValue(leftX / 36 + 640, 0, 1280 - 1);
-	Sint16 leftY = SDL_GameControllerGetAxis(aktiverGameController, SDL_CONTROLLER_AXIS_LEFTY);
+	Sint16 leftY = getGamepadLeftY(aktiverGameController, aktiverJoystick);
 	leftY = clipValue(leftY / 64 + 360, 0, 720 - 1);
-	Sint16 rightX = SDL_GameControllerGetAxis(aktiverGameController, SDL_CONTROLLER_AXIS_RIGHTX);
+	Sint16 rightX = getGamepadRightX(aktiverGameController, aktiverJoystick);
 	rightX = clipValue(rightX / 36 + 640, 0, 1280 - 1);
-	Sint16 rightY = SDL_GameControllerGetAxis(aktiverGameController, SDL_CONTROLLER_AXIS_RIGHTY);
+	Sint16 rightY = getGamepadRightY(aktiverGameController, aktiverJoystick);
 	rightY = clipValue(rightY / 64 + 360, 0, 720 - 1);
 
 
@@ -2001,6 +2129,9 @@ void loopContent_gameover() {
 				break;
 			}
 		}
+		else if (e.type == SDL_JOYBUTTONDOWN && !isGameController(e.jbutton.which)) {
+			weiterGedrueckt = true;
+		}
 	}
 
 	if (weiterGedrueckt) {
@@ -2095,6 +2226,9 @@ void loopContent_bonustabelle() {
 				weiterGedrueckt = true;
 				break;
 			}
+		}
+		else if (e.type == SDL_JOYBUTTONDOWN && !isGameController(e.jbutton.which)) {
+			weiterGedrueckt = true;
 		}
 	}
 
@@ -2385,6 +2519,79 @@ void loopContent_options() {
 				break;
 			}
 		}
+		else if (e.type == SDL_JOYHATMOTION && !isGameController(e.jhat.which)) {
+			switch (e.jhat.value) {
+				case SDL_HAT_UP:
+					selectedMenuItem = (selectedMenuItem + 3) % 4;
+					playSound(resource_sound_menueSelectionChange);
+					break;
+				case SDL_HAT_DOWN:
+					selectedMenuItem = (selectedMenuItem + 1) % 4;
+					playSound(resource_sound_menueSelectionChange);
+					break;
+			}
+		}
+		else if (e.type == SDL_JOYBUTTONDOWN && !isGameController(e.jbutton.which)) {
+			//TODO Code-Wiederholung
+			switch (selectedMenuItem) {
+				case 0:
+					soundEingeschaltet = !soundEingeschaltet;
+					playSound(resource_sound_menueConfirm); //in diesem Fall Sound erst nach der Aenderung spielen
+					if (soundEingeschaltet) {
+						pyrat_sprechen_textindex = 1;
+						pyrat_sprechen_laute = "AII ..LETS HIR IT WEN TOUS FLAIN RATS DAI ....      ";
+						pyrat_sprechen_anzahlLaute = 52;
+					}
+					else {
+						pyrat_sprechen_textindex = 6;
+						pyrat_sprechen_laute = "NOU SOUND .....DOUNT IE WANT TO HIR TOUS RAPSKILIENS DAI ....      ";
+						pyrat_sprechen_anzahlLaute = 67;
+					}
+					calculateAndSetNextSprechenStarttime();
+					pyrat_sprechen_anzahlLaute2 = 0;
+					break;
+				case 1:
+					playSound(resource_sound_menueConfirm);
+					musikEingeschaltet = !musikEingeschaltet;
+					if (musikEingeschaltet) {
+						Mix_PlayMusic(resource_music_hauptmenue, -1);
+						pyrat_sprechen_textindex = 8;
+						pyrat_sprechen_laute = "IE LAIK TAD FENSI MIUSIK ....      ";
+						pyrat_sprechen_anzahlLaute = 35;
+					}
+					else {
+						Mix_HaltMusic();
+						pyrat_sprechen_textindex = 0;
+						pyrat_sprechen_laute = "AII ..TURN TOUS BLODI KAANTIIS OF ....      ";
+						pyrat_sprechen_anzahlLaute = 44;
+					}
+					calculateAndSetNextSprechenStarttime();
+					pyrat_sprechen_anzahlLaute2 = 0;
+					break;
+				case 2: //Fullscreen
+					playSound(resource_sound_menueConfirm);
+					toggleFullscreen();
+					if (SDL_GetWindowFlags(window) & SDL_WINDOW_FULLSCREEN) {
+						pyrat_sprechen_textindex = 3;
+						pyrat_sprechen_laute = "...TATS BETER ....NOTING ELS MATERS ....         ";
+						pyrat_sprechen_anzahlLaute = 49;
+					}
+					else {
+						pyrat_sprechen_textindex = 9;
+						pyrat_sprechen_laute = "...WOOA ..EVERITIN IS MUVING ....         ";
+						pyrat_sprechen_anzahlLaute = 42;
+					}
+					calculateAndSetNextSprechenStarttime();
+					pyrat_sprechen_anzahlLaute2 = 0;
+					break;
+				case 3:
+					playSound(resource_sound_menueConfirm);
+					state = STATE_HAUPTMENUE;
+					selectedMenuItem = 0;
+					loopContent_hauptmenue();
+					return;
+			}
+		}
 	}
 
 	updateAnalogstickDigitaleYPositionen();
@@ -2621,6 +2828,9 @@ void loopContent_bestenliste() {
 				break;
 			}
 		}
+		else if (e.type == SDL_JOYBUTTONDOWN && !isGameController(e.jbutton.which)) {
+			weiterGedrueckt = true;
+		}
 	}
 
 	//Clear screen
@@ -2699,8 +2909,8 @@ void loopContent_namenseingabe() {
 	//Fuer den Tastaturersatz kann der Stick in eine von 8 Zonen bewegt werden
 	int leftAnalogStickZone = -1;
 
-	double leftX = (double)SDL_GameControllerGetAxis(aktiverGameController, SDL_CONTROLLER_AXIS_LEFTX) / 32768.0;
-	double leftY = (double)SDL_GameControllerGetAxis(aktiverGameController, SDL_CONTROLLER_AXIS_LEFTY) / 32768.0;
+	double leftX = (double)getGamepadLeftX(aktiverGameController, aktiverJoystick) / 32768.0;
+	double leftY = (double)getGamepadLeftY(aktiverGameController, aktiverJoystick) / 32768.0;
 	double ausschlagQuadriert = leftX * leftX + leftY * leftY;
 	if (ausschlagQuadriert > .5) {
 		//um die genaue Zone zu berechnen schaue ich mir 16 moegliche Faelle an
@@ -2757,8 +2967,7 @@ void loopContent_namenseingabe() {
 				namenseingabe_removeChar();
 			}
 		}
-
-		if (e.type == SDL_CONTROLLERBUTTONDOWN && e.cbutton.which == SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(aktiverGameController))) {
+		else if (e.type == SDL_CONTROLLERBUTTONDOWN && e.cbutton.which == SDL_JoystickInstanceID(aktiverJoystick)) {
 			switch (e.cbutton.button) {
 			case SDL_CONTROLLER_BUTTON_START:
 				weiterGedrueckt = true;
@@ -2990,7 +3199,7 @@ void loopContent_pause() {
 	//event loop (Tastatur, Gamepad, Maus)
 	while (SDL_PollEvent(&e) != 0) {
 		handleGlobalEvents(&e);
-		if (e.type == SDL_CONTROLLERBUTTONDOWN && e.cbutton.which == SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(aktiverGameController))) {
+		if (e.type == SDL_CONTROLLERBUTTONDOWN && e.cbutton.which == SDL_JoystickInstanceID(aktiverJoystick)) {
 			switch (e.cbutton.button) {
 			case SDL_CONTROLLER_BUTTON_START:
 				state = STATE_GAME;
@@ -3004,6 +3213,22 @@ void loopContent_pause() {
 				selectedMenuItem = 0;
 				loopContent_quitToMainMenu();
 				return;
+			}
+		}
+		else if (e.type == SDL_JOYBUTTONDOWN && e.jbutton.which == SDL_JoystickInstanceID(aktiverJoystick) && aktiverGameController == NULL) {
+			state = STATE_GAME;
+			aktuellerStatus_globalStarttime += SDL_GetTicks() - aktuellerStatus_pause_globalStarttime;
+			Mix_ResumeMusic();
+			loopContent_game();
+		}
+		else if (e.type == SDL_KEYDOWN) {
+			switch (e.key.keysym.sym) {
+				case SDLK_ESCAPE:
+					state = STATE_QUIT_TO_MAIN_MENU;
+					playSound(resource_sound_pause);
+					selectedMenuItem = 0;
+					loopContent_quitToMainMenu();
+					return;
 			}
 		}
 	}
@@ -3046,7 +3271,7 @@ void loopContent_quitToMainMenu() {
 	//event loop (Tastatur, Gamepad, Maus)
 	while (SDL_PollEvent(&e) != 0) {
 		handleGlobalEvents(&e);
-		if (e.type == SDL_CONTROLLERBUTTONDOWN && e.cbutton.which == SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(aktiverGameController))) {
+		if (e.type == SDL_CONTROLLERBUTTONDOWN && e.cbutton.which == SDL_JoystickInstanceID(aktiverJoystick)) {
 			switch (e.cbutton.button) {
 			case SDL_CONTROLLER_BUTTON_DPAD_LEFT:
 			case SDL_CONTROLLER_BUTTON_DPAD_RIGHT:
@@ -3074,6 +3299,27 @@ void loopContent_quitToMainMenu() {
 					backToGame = true;
 				}
 				break;
+			}
+		}
+		else if (e.type == SDL_JOYBUTTONDOWN && e.jbutton.which == SDL_JoystickInstanceID(aktiverJoystick) && aktiverGameController == NULL) {
+			if (selectedMenuItem == 0) {
+				backToGame = true;
+			}
+			else {
+				state = STATE_UEBERGANG_GAME_HAUPTMENUE;
+				aktuellerStatus_globalStarttime = SDL_GetTicks();
+				playSound(resource_sound_schieb);
+				loopContent_uebergangGameHauptmenue();
+				return;
+			}
+		}
+		else if (e.type == SDL_JOYHATMOTION && e.jhat.which == SDL_JoystickInstanceID(aktiverJoystick) && aktiverGameController == NULL) {
+			switch (e.jhat.value) {
+				case SDL_HAT_LEFT:
+				case SDL_HAT_RIGHT:
+					selectedMenuItem = (selectedMenuItem + 1) % 2;
+					playSound(resource_sound_menueSelectionChange);
+					break;
 			}
 		}
 	}
