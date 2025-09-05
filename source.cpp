@@ -49,7 +49,7 @@ FILE * oeffneDatei(const char * const filename, const char * const mode) {
 	return fopen(filename, mode);
 }
 int erstelleOrdner(const char * const filename) {
-	return mkdir(filename, 777);
+	return mkdir(filename, 0777);
 }
 #endif
 
@@ -623,7 +623,7 @@ int main(int argc, char* args[])
 void saveUserdata()
 {
 	//Verzeichnis erstellen, falls noch nicht vorhanden
-	erstelleOrdner("userdata"); //TODO bei linux berechtigung mit angeben
+	erstelleOrdner("userdata");
 
 	FILE *stream = oeffneDatei("userdata/options.dat", "wb");
 	if (stream) {
