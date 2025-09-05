@@ -217,6 +217,7 @@ int pyrat_sprechen_textindex2;
 
 Uint32 pyrat_armanimation_globalStarttime;
 
+bool doSaveBestenlisteAsPngAsSoonAsPossible = false;
 
 
 
@@ -640,7 +641,7 @@ void saveBestenliste() {
 	}
 
 	//Verzeichnis erstellen, falls noch nicht vorhanden
-	erstelleOrdner("userdata"); //TODO bei linux berechtigung mit angeben
+	erstelleOrdner("userdata");
 
 	FILE *stream = oeffneDatei("userdata/ranking.dat", "wb");
 	if (stream) {
@@ -652,6 +653,8 @@ void saveBestenliste() {
 		}
 		fclose(stream);
 	}
+
+	doSaveBestenlisteAsPngAsSoonAsPossible = true;
 }
 
 void initGamepads()
@@ -2844,6 +2847,13 @@ void loopContent_bestenliste() {
 	game_maleHud(GAME_LENGTH, 0);
 
 	SDL_RenderPresent(renderer);
+
+	if (doSaveBestenlisteAsPngAsSoonAsPossible) {
+		SDL_Surface* surface = SDL_CreateRGBSurface(0, SCREEN_WIDTH, SCREEN_HEIGHT, 32, 0, 0, 0, 0);
+		SDL_RenderReadPixels(renderer, NULL, surface->format->format, surface->pixels, surface->pitch);
+		IMG_SavePNG(surface, "userdata/ranking.png");
+		doSaveBestenlisteAsPngAsSoonAsPossible = false;
+	}
 
 	if (weiterGedrueckt) {
 		state = STATE_UEBERGANG_BESTENLISTE_HAUPTMENUE;
