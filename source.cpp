@@ -417,6 +417,10 @@ int main(int argc, char* args[])
 		printf("SDL_mixer could not initialize! SDL_mixer Error: %s\n", Mix_GetError());
 	}
 
+	resource_music_hauptmenue = Mix_LoadMUS("musik/slaythedragons-theme.ogg");
+	resource_music_game = Mix_LoadMUS("musik/Swirl-kurz.ogg");
+	resource_music_bonustabelle = Mix_LoadMUS("musik/bonustabelle.ogg");
+
 	initGamepads();
 
 
@@ -463,13 +467,6 @@ int main(int argc, char* args[])
 		resource_texture_sprechblase = ladeBilddateiAlsTexture("bilder/sprechblase.png");
 		resource_texture_pyratAuge = ladeBilddateiAlsTexture("bilder/auge.png");
 		resource_texture_fehlermeldungNoGamepad = ladeBilddateiAlsTexture("bilder/fehlermeldung-no_gamepad.png");
-
-		resource_music_hauptmenue = Mix_LoadMUS("musik/slaythedragons-theme.ogg");
-		SDL_Delay(15); //on the Pyra music did not work properly
-		resource_music_game = Mix_LoadMUS("musik/Swirl-kurz.ogg");
-		SDL_Delay(15);
-		resource_music_bonustabelle = Mix_LoadMUS("musik/bonustabelle.ogg");
-		SDL_Delay(15);
 
 		resource_sound_hieb = Mix_LoadWAV("sound/schwerthieb-stereo.ogg");
 		resource_sound_menueSelectionChange = Mix_LoadWAV("sound/menue.ogg");
