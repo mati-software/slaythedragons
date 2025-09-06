@@ -464,8 +464,8 @@ int main(int argc, char* args[])
 		resource_texture_pyratAuge = ladeBilddateiAlsTexture("bilder/auge.png");
 		resource_texture_fehlermeldungNoGamepad = ladeBilddateiAlsTexture("bilder/fehlermeldung-no_gamepad.png");
 
-		resource_music_hauptmenue = Mix_LoadMUS("musik/slaythedragons-theme.ogg");
 		resource_music_game = Mix_LoadMUS("musik/Swirl-kurz.ogg");
+		resource_music_hauptmenue = Mix_LoadMUS("musik/slaythedragons-theme.ogg");
 		resource_music_bonustabelle = Mix_LoadMUS("musik/bonustabelle.ogg");
 
 		resource_sound_hieb = Mix_LoadWAV("sound/schwerthieb-stereo.ogg");
